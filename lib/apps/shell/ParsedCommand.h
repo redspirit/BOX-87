@@ -10,13 +10,13 @@
  * Аналог argv/argc в POSIX
  */
 class ParsedCommand {
-public:
-    ParsedCommand();
+    public:
+        ParsedCommand();
 
-    void clear();
+        void clear();
 
-    int argc;
-    char argv[SHELL_MAX_ARGS][SHELL_ARG_LEN];
+        int argc;
+        char argv[SHELL_MAX_ARGS][SHELL_ARG_LEN];
 };
 
 /*

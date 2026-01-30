@@ -1,7 +1,7 @@
 #include "shell.h"
 #include "palette.h"
 #include "LOG.h"
-// #include "ParsedCommand.h"
+#include "ParsedCommand.h"
 // #include "shell_commands.h"
 
 #include <string.h>
@@ -150,14 +150,11 @@ void Shell::onKeyEnter() {
 
     _console.printLn();
 
-    _console.print("Command: -");
-    _console.print(_cmd);
-    _console.printLn("-");
-
-    // позже вернёшь:
-    // ParsedCommand pc;
-    // if (parseCommand(_cmd, pc))
-    //     shellExecute(*this, pc);
+    ParsedCommand pc;
+    if (parseCommand(_cmd, pc)) {
+//     shellExecute(*this, pc);
+    }
+    
 
     memset(_cmd, 0, sizeof(_cmd));
     _len = 0;
