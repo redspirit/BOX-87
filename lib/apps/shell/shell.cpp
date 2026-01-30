@@ -1,5 +1,12 @@
 #include "shell.h"
 #include "palette.h"
+#include "LOG.h"
+// #include "ParsedCommand.h"
+// #include "shell_commands.h"
+
+#include <string.h>
+#include <stdio.h>
+
 
 Shell::Shell(VGA& vga)
     : _vga(vga),
@@ -15,24 +22,213 @@ bool Shell::init() {
     _console.init(_vga, 8, 8, COLOR_WHITE);
     _console.setCursorVisible(true);
     _kb.init();
+
+    memset(_cmd, 0, sizeof(_cmd));
+    _len = 0;
+    _cursorPos = 0;
+
+    strcpy(_cwd, "/");
+
+    _console.setColor(COLOR_GREEN);
+    _console.printLn("RETRO CONSOLE OS v0.1 beta");
+    _console.printLn("SYSTEM SHELL");
+    _console.printLn("(c) 2026 RedSpirit");
+    _console.printLn();
+    _console.printLn("Type HELP for available commands.");
+    _console.printLn();
+    _console.useDefaultColor();
+
+    _historyCount = 0;
+    _historyHead  = 0;
+    _historyPos   = -1;
+
+    printPrompt();
+
     return true;
 }
 
 void Shell::update(float dt) {
     _vga.clear(0);
     _console.cursorUpdate(dt);
-
-    _kb.beginFrame();
     
     char c;
-    if (_kb.getChar(c)) {
-        _console.print(c);
+    while (_kb.getChar(c)) {
+        onChar(c);
     }
+
+    if (_kb.isJustPressed(Keyboard::BACKSPACE)) onKeyBack();
+    if (_kb.isJustPressed(Keyboard::ENTER))     onKeyEnter();
+    if (_kb.isJustPressed(Keyboard::LEFT))      onKeyLeft();
+    if (_kb.isJustPressed(Keyboard::RIGHT))     onKeyRight();
+    if (_kb.isJustPressed(Keyboard::UP))        onKeyUp();
+    if (_kb.isJustPressed(Keyboard::DOWN))      onKeyDown();
 
     _console.show();
     _vga.show();
+    _kb.beginFrame();
 }
 
 void Shell::tick() {
     _kb.poll();
+}
+
+void Shell::printPrompt() {
+    _console.setColor(COLOR_CYAN);
+    _console.useDefaultColor();
+    _console.print(PROMPT);
+    // считали актуальные координаты курсора после новой строки
+    _console.getCursor(_cursorX, _cursorY);
+
+}
+
+void Shell::redrawInputLine() {
+    // стереть старую строку
+    for (int i = 0; i < SHELL_CMD_MAX; i++) {
+        _console.clearCharAt(PROMPT_LEN + i, _cursorY);
+    }
+
+    LOG.print("_cursorPos "); LOG.println(_cursorPos);
+    LOG.print("_cursorX "); LOG.println(_cursorX);
+
+    // напечатать всю команду заново
+    _console.setCursor(PROMPT_LEN, _cursorY);
+    _console.print(_cmd);
+
+    _console.setCursor(
+        PROMPT_LEN + _cursorPos,
+        _cursorY
+    );
+}
+
+void Shell::setCwd(const char* path) {
+    strncpy(_cwd, path, sizeof(_cwd));
+    _cwd[sizeof(_cwd) - 1] = 0;
+}
+
+void Shell::onChar(char c) {
+    if (_len >= SHELL_CMD_MAX - 1)
+        return;
+
+    memmove(
+        &_cmd[_cursorPos + 1],
+        &_cmd[_cursorPos],
+        _len - _cursorPos + 1
+    );
+
+    _cmd[_cursorPos] = c;
+    _len++;
+    _cursorPos++;
+
+    if (_cursorPos == _len) {
+        // курсор был в конце
+        _console.print(c);
+    } else {
+        // курсор в середине — полная перерисовка
+        redrawInputLine();
+    }
+}
+
+void Shell::onKeyBack() {
+    if (_cursorPos == 0)
+        return;
+
+    memmove(
+        &_cmd[_cursorPos - 1],
+        &_cmd[_cursorPos],
+        _len - _cursorPos + 1
+    );
+
+    _len--;
+    _cursorPos--;
+
+    redrawInputLine();
+}
+
+void Shell::onKeyEnter() {
+    _cmd[_len] = 0;
+    historyAdd(_cmd);
+
+    _console.printLn();
+
+    _console.print("Command: -");
+    _console.print(_cmd);
+    _console.printLn("-");
+
+    // позже вернёшь:
+    // ParsedCommand pc;
+    // if (parseCommand(_cmd, pc))
+    //     shellExecute(*this, pc);
+
+    memset(_cmd, 0, sizeof(_cmd));
+    _len = 0;
+    _cursorPos = 0;
+
+    printPrompt();
+}
+
+void Shell::onKeyLeft() {
+    if (_cursorPos == 0) return;
+    _cursorPos--;
+    redrawInputLine();
+}
+
+void Shell::onKeyRight() {
+    if (_cursorPos >= _len) return;
+    _cursorPos++;
+    redrawInputLine();
+}
+
+void Shell::historyAdd(const char* line) {
+    if (!line || !line[0]) return;
+
+    if (_historyCount > 0) {
+        int last = (_historyHead - 1 + HISTORY_SIZE) % HISTORY_SIZE;
+        if (strcmp(_history[last], line) == 0)
+            return;
+    }
+
+    strncpy(_history[_historyHead], line, HISTORY_CMD_MAX);
+    _history[_historyHead][HISTORY_CMD_MAX - 1] = 0;
+
+    _historyHead = (_historyHead + 1) % HISTORY_SIZE;
+    if (_historyCount < HISTORY_SIZE)
+        _historyCount++;
+
+    _historyPos = -1;
+}
+
+void Shell::loadHistoryLine(const char* line) {
+    strncpy(_cmd, line, SHELL_CMD_MAX);
+    _cmd[SHELL_CMD_MAX - 1] = 0;
+
+    _len = strlen(_cmd);
+    _cursorPos = _len;
+
+    redrawInputLine();
+}
+
+void Shell::onKeyUp() {
+    if (_historyCount == 0) return;
+    if (_historyPos < _historyCount - 1) _historyPos++;
+
+    int idx = (_historyHead - 1 - _historyPos + HISTORY_SIZE) % HISTORY_SIZE;
+    loadHistoryLine(_history[idx]);
+}
+
+void Shell::onKeyDown() {
+    if (_historyPos < 0) return;
+
+    _historyPos--;
+    if (_historyPos < 0) {
+        for (int i = 0; i < _len; ++i)
+            _console.clearCharAt(PROMPT_LEN + i, _cursorY);
+
+        _len = 0;
+        _cursorPos = 0;
+        _console.setCursor(PROMPT_LEN, _cursorY);
+        return;
+    }
+
+    int idx = (_historyHead - 1 - _historyPos + HISTORY_SIZE) % HISTORY_SIZE;
+    loadHistoryLine(_history[idx]);
 }

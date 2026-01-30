@@ -26,8 +26,8 @@ void setup() {
 
     LOG.println("Started!!!");
 
-    // app.setSubsystem(new Shell(vga));
-    app.setSubsystem(new HelloWorld(vga));
+    app.setSubsystem(new Shell(vga));
+    // app.setSubsystem(new HelloWorld(vga));
 }
 
 void loop() {
