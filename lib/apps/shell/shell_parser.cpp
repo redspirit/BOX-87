@@ -1,13 +1,13 @@
-#include "ParsedCommand.h"
+#include "shell_parser.h"
 #include <string.h>
 
 /* ==== ParsedCommand ==== */
 
-ParsedCommand::ParsedCommand() {
+ShellParser::ShellParser() {
     clear();
 }
 
-void ParsedCommand::clear() {
+void ShellParser::clear() {
     argc = 0;
     for (int i = 0; i < SHELL_MAX_ARGS; ++i)
         argv[i][0] = 0;
@@ -15,7 +15,7 @@ void ParsedCommand::clear() {
 
 /* ==== PARSER ==== */
 
-bool parseCommand(const char* line, ParsedCommand& out) {
+bool parseCommand(const char* line, ShellParser& out) {
     out.clear();
 
     if (!line || !line[0])

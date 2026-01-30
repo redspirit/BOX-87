@@ -1,5 +1,6 @@
 #include "shell_commands.h"
 #include "palette.h"
+#include "shell.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -8,10 +9,10 @@
  *  COMMAND HANDLERS
  * ========================================================= */
 
-static bool cmd_help(ParsedCommand& cmd);
-static bool cmd_clear(ParsedCommand& cmd);
-static bool cmd_echo(ParsedCommand& cmd);
-static bool cmd_version(ParsedCommand& cmd);
+static bool cmd_help(Shell& shell, ShellParser& cmd);
+static bool cmd_clear(Shell& shell, ShellParser& cmd);
+static bool cmd_echo(Shell& shell, ShellParser& cmd);
+static bool cmd_version(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -19,7 +20,7 @@ static bool cmd_version(ParsedCommand& cmd);
 
 struct ShellCommand {
     const char* name;
-    bool (*handler)(Shell&, ParsedCommand&);
+    bool (*handler)(Shell&, ShellParser&);
     const char* help;
 };
 
@@ -37,7 +38,8 @@ static const int g_commandCount =
  *  EXECUTOR
  * ========================================================= */
 
-bool shellExecute(Shell& shell, ParsedCommand& cmd) {
+bool shellExecute(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();    
     if (cmd.argc == 0)
         return false;
 
@@ -47,11 +49,11 @@ bool shellExecute(Shell& shell, ParsedCommand& cmd) {
         }
     }
 
-    shell.console().setColor(COLOR_RED);
-    shell.console().print("Unknown command: ");
-    shell.console().print(cmd.argv[0]);
-    shell.console().useDefaultColor();
-    shell.console().printLn();
+    con.setColor(COLOR_RED);
+    con.print("Unknown command: ");
+    con.print(cmd.argv[0]);
+    con.useDefaultColor();
+    con.printLn();
 
     return false;
 }
@@ -60,36 +62,42 @@ bool shellExecute(Shell& shell, ParsedCommand& cmd) {
  *  COMMAND IMPLEMENTATIONS
  * ========================================================= */
 
-static bool cmd_help(Shell& shell, ParsedCommand& cmd) {
-    g_console->printLn("Available commands:");
+static bool cmd_help(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    con.printLn("Available commands:");
 
     for (int i = 0; i < g_commandCount; ++i) {
-        g_console->print("  ");
-        g_console->print(g_commands[i].name);
-        g_console->print(" - ");
-        g_console->printLn(g_commands[i].help);
+        con.print("  ");
+        con.print(g_commands[i].name);
+        con.print(" - ");
+        con.printLn(g_commands[i].help);
     }
 
     return true;
 }
 
-static bool cmd_clear(Shell& shell, ParsedCommand& cmd) {
-    g_console->clear();
+static bool cmd_clear(Shell& shell, ShellParser& cmd) {
+    shell.console().clear();
     return true;
 }
 
-static bool cmd_echo(Shell& shell, ParsedCommand& cmd) {
+static bool cmd_echo(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
     for (int i = 1; i < cmd.argc; ++i) {
-        g_console->print(cmd.argv[i]);
+        con.print(cmd.argv[i]);
         if (i != cmd.argc - 1)
-            g_console->print(" ");
+            con.print(" ");
     }
-    g_console->printLn();
+    con.printLn();
     return true;
 }
 
-static bool cmd_version(Shell& shell, ParsedCommand& cmd) {
-    g_console->printLn("RetroShell v0.1");
-    g_console->printLn("Target: ESP32 / VGA");
+static bool cmd_version(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    con.printLn("RetroShell v0.1");
+    con.printLn("Target: ESP32 / VGA");
     return true;
 }

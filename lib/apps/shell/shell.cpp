@@ -1,8 +1,8 @@
 #include "shell.h"
 #include "palette.h"
 #include "LOG.h"
-#include "ParsedCommand.h"
-// #include "shell_commands.h"
+#include "shell_parser.h"
+#include "shell_commands.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -150,9 +150,9 @@ void Shell::onKeyEnter() {
 
     _console.printLn();
 
-    ParsedCommand pc;
-    if (parseCommand(_cmd, pc)) {
-//     shellExecute(*this, pc);
+    ShellParser parser;
+    if (parseCommand(_cmd, parser)) {
+        shellExecute(*this, parser);
     }
     
 

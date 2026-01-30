@@ -9,9 +9,9 @@
  * Результат парсинга команды
  * Аналог argv/argc в POSIX
  */
-class ParsedCommand {
+class ShellParser {
     public:
-        ParsedCommand();
+        ShellParser();
 
         void clear();
 
@@ -23,4 +23,4 @@ class ParsedCommand {
  * Парсер строки shell-команды
  * Возвращает false если строка пустая или ошибка
  */
-bool parseCommand(const char* line, ParsedCommand& out);
+bool parseCommand(const char* line, ShellParser& out);
