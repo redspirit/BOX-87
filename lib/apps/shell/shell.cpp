@@ -11,7 +11,9 @@
 Shell::Shell(VGA& vga)
     : _vga(vga),
       _console(),
-      _kb() {
+      _sd(),
+      _kb(), 
+      _lua() {
 }
 
 Shell::~Shell() {
@@ -228,4 +230,73 @@ void Shell::onKeyDown() {
 
     int idx = (_historyHead - 1 - _historyPos + HISTORY_SIZE) % HISTORY_SIZE;
     loadHistoryLine(_history[idx]);
+}
+
+void Shell::resolvePath(const char* input, char* out) {
+    char temp[MAX_PATH];
+
+    if (!input || input[0] == '\0') {
+        strncpy(temp, _cwd, MAX_PATH);
+    } else if (input[0] == '/') {
+        strncpy(temp, input, MAX_PATH);
+    } else {
+        if (strcmp(_cwd, "/") == 0)
+            snprintf(temp, MAX_PATH, "/%s", input);
+        else
+            snprintf(temp, MAX_PATH, "%s/%s", _cwd, input);
+    }
+
+    temp[MAX_PATH - 1] = 0;
+
+    const char* segments[MAX_SEGMENTS];
+    int segCount = 0;
+
+    char* p = temp;
+
+    // пропускаем начальный '/'
+    if (*p == '/')
+        p++;
+
+    while (*p && segCount < MAX_SEGMENTS) {
+        char* start = p;
+
+        // идём до '/' или конца
+        while (*p && *p != '/')
+            p++;
+
+        if (*p) {
+            *p = 0;
+            p++;
+        }
+
+        if (strcmp(start, ".") == 0) {
+            // ничего не делаем
+        }
+        else if (strcmp(start, "..") == 0) {
+            if (segCount > 0)
+                segCount--;   // шаг назад
+        }
+        else if (*start) {
+            segments[segCount++] = start;
+        }
+    }
+
+    if (segCount == 0) {
+        strcpy(out, "/");
+        return;
+    }
+
+    char* dst = out;
+    *dst++ = '/';
+
+    for (int i = 0; i < segCount; ++i) {
+        int l = strlen(segments[i]);
+        memcpy(dst, segments[i], l);
+        dst += l;
+
+        if (i < segCount - 1)
+            *dst++ = '/';
+    }
+
+    *dst = 0;
 }

@@ -20,7 +20,7 @@ public:
     void close();
 
     bool readFile(const char* path, char* dst, size_t maxLen);
-    void listDir(const char* path, void (*callback)(const char* name, bool isDir));
+    void listDir(const char* path, void (*callback)(void* user, const char* name, bool isDir), void* user);
     bool dirExists(const char* path);
 
     bool mkdir(const char* path);

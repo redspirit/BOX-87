@@ -68,7 +68,7 @@ bool SDCard::readFile(const char* path, char* dst, size_t maxLen) {
     return true;
 }
 
-void SDCard::listDir(const char* path, void (*callback)(const char* name, bool isDir)) {
+void SDCard::listDir(const char* path, void (*callback)(void* user, const char* name, bool isDir), void* user) {
     if (!inited_) return;
 
     fs::File dir = SD.open(path);
@@ -110,7 +110,7 @@ void SDCard::listDir(const char* path, void (*callback)(const char* name, bool i
     }
 
     for (int i = 0; i < count; ++i) {
-        callback(entries[i].name, entries[i].isDir);
+        callback(user, entries[i].name, entries[i].isDir);
     }
 }
 

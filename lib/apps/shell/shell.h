@@ -3,6 +3,8 @@
 #include "keyboard.h"
 #include "console.h"
 #include "VGA.h"
+#include "SDCard.h"
+#include "shell_lua.h"
 
 #define SHELL_CMD_MAX     64
 #define MAX_SEGMENTS      16
@@ -23,14 +25,19 @@ class Shell : public ISubsystem {
         void tick() override;
 
         Console& console() { return _console; }
+        SDCard& sdcard() { return _sd; }
+        ShellLua& lua() { return _lua; }
         const char* cwd() const { return _cwd; }
         void setCwd(const char* path);
+        void resolvePath(const char* input, char* out);
 
     private:
         /* ==== DEVICES ==== */
         VGA& _vga;
         Console _console;
         Keyboard _kb;
+        SDCard _sd;
+        ShellLua _lua;
 
         /* ==== COMMAND LINE ==== */
         char _cmd[SHELL_CMD_MAX];
