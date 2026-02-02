@@ -31,6 +31,7 @@ static bool cmd_append(Shell& shell, ShellParser& cmd);
 static bool cmd_lua(Shell& shell, ShellParser& cmd);
 static bool cmd_mem(Shell& shell, ShellParser& cmd);
 static bool cmd_hw(Shell& shell, ShellParser& cmd);
+static bool cmd_play(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -60,6 +61,7 @@ static const ShellCommand commands[] = {
     { "LUA", cmd_lua, "Execute Lua expression" },
     { "MEM", cmd_mem, "Show memory info" },
     { "HW", cmd_hw, "Start Hello World application" },
+    { "PLAY", cmd_play, "Play media file" },
 };
 
 static const int commandCount =
@@ -578,5 +580,36 @@ static bool cmd_hw(Shell& shell, ShellParser& cmd) {
     shell.app().requestSwitch(
         new HelloWorld(shell.vga())
     );
+    return true;
+}
+
+static bool cmd_play(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    if (cmd.argc < 2) {
+        con.setColor(COLOR_RED);
+        con.printLn("Usage: PLAY <file>");
+        con.useDefaultColor();
+        return false;
+    }
+
+    char path[MAX_PATH];
+    shell.resolvePath(cmd.argv[1], path);
+
+    if (!sdCheck(shell)) {
+        return false;
+    }
+
+    if (!shell.sdcard().fileExists(path)) {
+        con.setColor(COLOR_RED);
+        con.print("File not found: ");
+        con.printLn(path);
+        con.useDefaultColor();
+        return false;
+    }
+
+    con.print("PLAY FILE: ");
+    con.printLn(path);    
+
     return true;
 }

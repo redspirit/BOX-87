@@ -43,7 +43,7 @@ bool Shell::init() {
     _console.printLn(" BOX-87 SYSTEM SHELL ROM v0.1");
     _console.printLn(" (c) 2026 RedSpirit");
     _console.printLn();
-    _console.printLn(" SRAM 320K PSRAM 8100K");
+    _console.printLn(" SRAM 388K PSRAM 8191K");
     _console.printLn(" VGA: 320x240");
     _console.printLn(" KEYBOARD: Ready");
     _console.printLn(" SD: Unavailable");
