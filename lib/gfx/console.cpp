@@ -78,6 +78,8 @@ void Console::clearLine(int row) {
 void Console::scrollUp() {
     head_ = (head_ + 1) % height_;
     if (cy_ > 0) cy_--;
+    _logoY -= 8;
+    tiles_->imageY(_logoY);
 }
 
 void Console::newLine() {
@@ -192,6 +194,11 @@ void Console::cursorUpdate(float dt) {
 
 void Console::show() {
     show(0, height_ - 1);
+}
+
+void Console::insertLogo(const uint8_t* data, uint16_t w, uint16_t h, int16_t x, int16_t y) {
+    tiles_->setImage(data, w, h, x, y);
+    _logoY = y;
 }
 
 void Console::show(int y1, int y2) {

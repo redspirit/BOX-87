@@ -3,13 +3,15 @@
 #include "LOG.h"
 #include "shell_parser.h"
 #include "shell_commands.h"
+#include <shell/logo.h>
 
 #include <string.h>
 #include <stdio.h>
 
 
-Shell::Shell(VGA& vga)
+Shell::Shell(VGA& vga, AppManager& app)
     : _vga(vga),
+      _app(app),
       _console(),
       _sd(),
       _kb(), 
@@ -31,12 +33,22 @@ bool Shell::init() {
 
     strcpy(_cwd, "/");
 
-    _console.setColor(COLOR_GREEN);
-    _console.printLn("RETRO CONSOLE OS v0.1 beta");
-    _console.printLn("SYSTEM SHELL");
-    _console.printLn("(c) 2026 RedSpirit");
+    _console.insertLogo(IMG_DATA, IMG_W, IMG_H, 5, 4);
     _console.printLn();
-    _console.printLn("Type HELP for available commands.");
+    _console.printLn();
+    _console.printLn();
+    _console.printLn();
+    _console.printLn();
+    _console.setColor(COLOR_GREEN);
+    _console.printLn(" BOX-87 SYSTEM SHELL ROM v0.1");
+    _console.printLn(" (c) 2026 RedSpirit");
+    _console.printLn();
+    _console.printLn(" SRAM 320K PSRAM 8100K");
+    _console.printLn(" VGA: 320x240");
+    _console.printLn(" KEYBOARD: Ready");
+    _console.printLn(" SD: Unavailable");
+    _console.printLn();
+    _console.printLn(" Type HELP for commands");
     _console.printLn();
     _console.useDefaultColor();
 
@@ -88,9 +100,6 @@ void Shell::redrawInputLine() {
     for (int i = 0; i < SHELL_CMD_MAX; i++) {
         _console.clearCharAt(PROMPT_LEN + i, _cursorY);
     }
-
-    LOG.print("_cursorPos "); LOG.println(_cursorPos);
-    LOG.print("_cursorX "); LOG.println(_cursorX);
 
     // напечатать всю команду заново
     _console.setCursor(PROMPT_LEN, _cursorY);

@@ -1,6 +1,8 @@
 #include "shell_commands.h"
 #include "palette.h"
 #include "shell.h"
+#include "helloworld/helloworld.h"
+#include "AppManager.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -28,6 +30,7 @@ static bool cmd_write(Shell& shell, ShellParser& cmd);
 static bool cmd_append(Shell& shell, ShellParser& cmd);
 static bool cmd_lua(Shell& shell, ShellParser& cmd);
 static bool cmd_mem(Shell& shell, ShellParser& cmd);
+static bool cmd_hw(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -56,6 +59,7 @@ static const ShellCommand commands[] = {
     { "APPEND", cmd_append, "Append text to file" },
     { "LUA", cmd_lua, "Execute Lua expression" },
     { "MEM", cmd_mem, "Show memory info" },
+    { "HW", cmd_hw, "Start Hello World application" },
 };
 
 static const int commandCount =
@@ -567,5 +571,12 @@ static bool cmd_lua(Shell& shell, ShellParser& cmd) {
 
     con.printLn(out);
 
+    return true;
+}
+
+static bool cmd_hw(Shell& shell, ShellParser& cmd) {
+    shell.app().requestSwitch(
+        new HelloWorld(shell.vga())
+    );
     return true;
 }

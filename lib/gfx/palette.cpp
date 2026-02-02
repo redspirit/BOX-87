@@ -63,6 +63,12 @@ void paletteInit() {
     for (int i = 96; i < 256; i++) {
         palette[i] = rgb332(0, 0, 0);
     }
+
+    // цвета логотипа
+    palette[96] = rgb332(255, 255, 255);
+    palette[97] = rgb332(0, 0, 0);
+    palette[98] = rgb332(255, 0, 113);
+    palette[99] = rgb332(0, 49, 255);
 }
 
 uint8_t getColorByPalette(uint8_t index) {

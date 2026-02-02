@@ -2,7 +2,6 @@
 
 #include "AppManager.h"
 #include "shell/shell.h"
-#include "helloworld/helloworld.h"
 #include "LOG.h"
 #include <Arduino.h>
 
@@ -19,6 +18,10 @@ Mode mode = Mode::MODE_320x240x60;
 
 AppManager app;
 
+ISubsystem* createShell() {
+    return new Shell(vga, app);
+}
+
 void setup() {
 	LOG.begin(115200);
 	if(!vga.init(pins, mode)) while(1) delay(1);
@@ -26,8 +29,8 @@ void setup() {
 
     LOG.println("Started!!!");
 
-    app.setSubsystem(new Shell(vga));
-    // app.setSubsystem(new HelloWorld(vga));
+    app.setDefault(createShell);
+    app.startDefault();
 }
 
 void loop() {

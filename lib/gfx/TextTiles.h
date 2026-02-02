@@ -4,6 +4,15 @@
 
 class VGA;
 
+struct ImageLayer {
+    const uint8_t* data;
+    uint16_t width;   // pixels
+    uint16_t height;  // pixels
+    int16_t x;        // pixel position
+    int16_t y;        // pixel position (world Y)
+    bool enabled;
+};
+
 class TextTiles {
 public:
     using Tile = CharTile;
@@ -29,6 +38,16 @@ public:
     int width()  const { return gridW_; }
     int height() const { return gridH_; }
 
+    void setImage(
+        const uint8_t* data,
+        uint16_t w,
+        uint16_t h,
+        int16_t x,
+        int16_t y
+    );
+    void hideImage();
+    void imageY(int16_t y);
+
 private:
     VGA* vga_ = nullptr;
 
@@ -38,6 +57,7 @@ private:
     int tileH_ = 0;
 
     CharTile* tilemap_ = nullptr;
+    ImageLayer _image;
 
     // foreground
     CharTile fgTile_{};
@@ -50,4 +70,7 @@ private:
     }
 
     void renderTile(int px, int py, const CharTile& t);
+    void drawText();
+    void drawImage();
+    void drawCursor();
 };

@@ -15,4 +15,6 @@ class HelloWorld : public ISubsystem {
     private:
         VGA& _vga;
         TextTiles _tiles;
+
+        float _time;
 };

@@ -46,6 +46,7 @@ class Console {
 
         void show();
         void show(int y1, int y2);
+        void insertLogo(const uint8_t* data, uint16_t w, uint16_t h, int16_t x, int16_t y);
 
     private:
         // owned
@@ -72,6 +73,8 @@ class Console {
         float blinkTimer_ = 0.0f;
         bool cursorEnabled_ = false;   // управляется setCursorVisible()
         bool cursorPhase_   = true;    // мигание
+
+        int16_t _logoY = 0;
 
     private:
         inline CharTile& cell(int x, int y);

@@ -15,9 +15,11 @@
 #define HISTORY_SIZE      10
 #define HISTORY_CMD_MAX   SHELL_CMD_MAX
 
+class AppManager;
+
 class Shell : public ISubsystem {
     public:
-        Shell(VGA& _vga);
+        Shell(VGA& _vga, AppManager& app);
         ~Shell();
 
         bool init() override;
@@ -27,11 +29,17 @@ class Shell : public ISubsystem {
         Console& console() { return _console; }
         SDCard& sdcard() { return _sd; }
         ShellLua& lua() { return _lua; }
+        AppManager& app() { return _app; }
+        VGA& vga() { return _vga; }
+        
         const char* cwd() const { return _cwd; }
         void setCwd(const char* path);
         void resolvePath(const char* input, char* out);
 
     private:
+
+        AppManager& _app;
+
         /* ==== DEVICES ==== */
         VGA& _vga;
         Console _console;
