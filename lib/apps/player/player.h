@@ -14,12 +14,17 @@ class Player : public ISubsystem {
         void update(float dt) override;
         void tick() override;
 
+        uint32_t frameTimeMs() const override {
+            return _frameTimeMs;
+        }
+
     private:
         VGA& _vga;
         SDCard _sd;
         TextTiles _tiles;
         SdReadBuffer* _rb = nullptr;
 
+        uint32_t _frameTimeMs = 16;
         bool open(const char* path);
         void playFrame();
         bool isFinished() const;

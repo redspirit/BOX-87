@@ -39,7 +39,7 @@ bool Player::init() {
     // testSDReadSpeed("/badapple.rvv");
 
     // if (!open("/badapple.rvv")) {
-    if (!open("/tetoris.rvv")) {
+    if (!open("/titans.rvv")) {
     // if (!open("/dan.rvv")) {
         _tiles.print("Failed to open RVV", 1, 1, COLOR_RED);
         return false;
@@ -112,15 +112,17 @@ void Player::update(float dt) {
     if (!isFinished()) {
         playFrame();
 
-        char framebuf[6];
+        char framebuf[8];
         itoa(currentFrame, framebuf, 10);
         _tiles.print(framebuf, 0, 29, COLOR_GREEN);
 
-
-        char dtbuf[16];
+        char dtbuf[8];
         dtostrf(dt, 0, 3, dtbuf);
         _tiles.print(dtbuf, 5, 29, COLOR_BLUE);
 
+        char fpsbuf[8];
+        dtostrf(1 / dt, 0, 1, fpsbuf);
+        _tiles.print(fpsbuf, 11, 29, COLOR_CYAN);
 
         _tiles.render();
         _vga.show();
@@ -186,6 +188,8 @@ bool Player::readHeader() {
     memset(stateFB, 0, width * height);
 
     directColor = (bpp == 8);
+
+    _frameTimeMs = 1000 / fps;
 
     return true;
 }

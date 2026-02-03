@@ -11,7 +11,6 @@ public:
     void requestSwitch(ISubsystem* next);
     void requestExit();
     void setSubsystem(ISubsystem* s);
-    void update(float dt);
     void tick();
 
 private:
@@ -22,5 +21,6 @@ private:
     ISubsystem* _next    = nullptr;
     AppFactory  _defaultFactory = nullptr;
     
+    uint32_t _lastFrameMs = 0;
     bool _exitRequested  = false;
 };

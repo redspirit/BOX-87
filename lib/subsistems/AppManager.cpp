@@ -1,4 +1,5 @@
 #include "AppManager.h"
+#include <esp32-hal.h>
 
 void AppManager::setDefault(AppFactory factory) {
     _defaultFactory = factory;
@@ -38,23 +39,33 @@ void AppManager::unloadCurrent() {
     }
 }
 
-void AppManager::update(float dt) {
-    if (_current) {
-        _current->update(dt);
-
-        if (_current->wantsExit()) {
-            _exitRequested = true;
-        }
-    }
-
-    if (_exitRequested || _next) {
-        performSwitch();
-    }
-}
-
 void AppManager::tick() {
+    if (!_current) return;
+
     if (_current) {
         _current->tick();
+    }
+
+    uint32_t now = millis();
+    uint32_t frameMs = _current->frameTimeMs();
+
+    if (now - _lastFrameMs < frameMs) {
+        return; // ещё рано
+    }
+
+    float dt = (now - _lastFrameMs) * 1e-3f;
+    _lastFrameMs = now;
+
+    if (dt > 0.05f) dt = 0.05f; // clamp
+
+    _current->update(dt);
+
+    if (_current->wantsExit()) {
+        _exitRequested = true;
+    }
+
+    if (_next) {
+        performSwitch();
     }
 }
 
