@@ -33,6 +33,8 @@ public:
     bool writeTextFile(const char* path, const char* text);
     bool appendTextFile(const char* path, const char* text);
 
+    fs::File* file() { return currentFile_; }
+    
     bool readTextFileLimited(
         const char* path,
         char* dst,

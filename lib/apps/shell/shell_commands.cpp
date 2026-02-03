@@ -2,6 +2,7 @@
 #include "palette.h"
 #include "shell.h"
 #include "helloworld/helloworld.h"
+#include "player/player.h"
 #include "AppManager.h"
 
 #include <string.h>
@@ -600,16 +601,17 @@ static bool cmd_play(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    if (!shell.sdcard().fileExists(path)) {
-        con.setColor(COLOR_RED);
-        con.print("File not found: ");
-        con.printLn(path);
-        con.useDefaultColor();
-        return false;
-    }
+    // if (!shell.sdcard().fileExists(path)) {
+    //     con.setColor(COLOR_RED);
+    //     con.print("File not found: ");
+    //     con.printLn(path);
+    //     con.useDefaultColor();
+    //     return false;
+    // }
 
-    con.print("PLAY FILE: ");
-    con.printLn(path);    
+    shell.app().requestSwitch(
+        new Player(shell.vga())
+    ); 
 
     return true;
 }
