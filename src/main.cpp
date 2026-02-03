@@ -37,7 +37,9 @@ void loop() {
     app.tick();
     static unsigned long last = 0;
     unsigned long now = millis();
-    if (now - last < 16) return; // ~60 FPS
+    if (now - last < 41) return; // ~24 FPS
+    // if (now - last < 33) return; // ~30 FPS
+    // if (now - last < 16) return; // ~60 FPS
     float dt = (now - last) * 1e-3f;
     last = now;
 

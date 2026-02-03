@@ -186,15 +186,26 @@ void TextTiles::render() {
 
 void TextTiles::renderTile(int px, int py, const CharTile& t) {
     const uint8_t* glyph = font8x8::get(t.ch);
-    uint8_t color = getColorByPalette(t.color);
+    uint8_t fg = getColorByPalette(t.color);
+    uint8_t bg = getColorByPalette(0); // чёрный
 
     for (int y = 0; y < tileH_; y++) {
         uint8_t row = glyph[y];
         uint8_t* dst = vga_->getLinePtr8(py + y) + px;
 
         for (int x = 0; x < tileW_; x++) {
-            if (row & (1 << (7 - x)))
-                dst[x] = color;
+            bool bit = row & (1 << (7 - x));
+
+            if (bit) {
+                dst[x] = fg;
+            } else if (!transparent_) {
+                dst[x] = bg;
+            }
+            // если transparent_ == true и bit == 0 → ничего не делаем
         }
     }
+}
+
+void TextTiles::setTransparent(bool enabled) {
+    transparent_ = enabled;
 }

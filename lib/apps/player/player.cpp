@@ -13,7 +13,7 @@ static uint16_t readU16(SDCard& sd) {
     return lo | (hi << 8);
 }
 
-Player::Player(VGA& vga): _vga(vga), _sd(), _console() {
+Player::Player(VGA& vga): _vga(vga), _sd(), _tiles() {
 }
 
 Player::~Player() {
@@ -27,26 +27,25 @@ Player::~Player() {
 bool Player::init() {
     _vga.clear(0);
     paletteInit();
-    _console.init(_vga, 8, 8, COLOR_GREEN);
-    _console.setCursorVisible(false);
+    _tiles.init(_vga, 8, 8);
+    _tiles.setTransparent(false);
 
     if (!_sd.init()) {
-        _console.printLn("SD card not initialized");
+        _tiles.print("SD card not initialized", 1, 1, COLOR_RED);
         return false;
     }
 
-    _console.printLn("Opening video...");
 
-    if (!open("/badapple.rvv")) {
-    // if (!open("/tetoris.rvv")) {
-        _console.printLn("Failed to open RVV");
+    // testSDReadSpeed("/badapple.rvv");
+
+    // if (!open("/badapple.rvv")) {
+    if (!open("/tetoris.rvv")) {
+    // if (!open("/dan.rvv")) {
+        _tiles.print("Failed to open RVV", 1, 1, COLOR_RED);
         return false;
     }
 
-    _console.printLn("RVV player ready");
-
-
-    _console.show();
+    _tiles.render();
     _vga.show();
 
     _vga.clear(0);
@@ -55,10 +54,76 @@ bool Player::init() {
     return true;
 }
 
+void Player::testSDReadSpeed(const char* path) {
+    if (!_sd.open(path)) {
+        _tiles.print("SD open failed", 1, 1, COLOR_RED);
+        _tiles.render();
+        _vga.show();
+        return;
+    }
+
+    _tiles.print("Started test speed", 1, 1, COLOR_RED);
+
+    _rb = new SdReadBuffer(_sd.file());
+
+    static uint8_t buf[8192];
+
+    uint32_t totalBytes = 0;
+    uint32_t t0 = millis();
+
+    while (_rb->available()) {
+        int toRead = _rb->available();
+        if (toRead > (int)sizeof(buf))
+            toRead = sizeof(buf);
+
+        _rb->readBytes(buf, toRead);
+        totalBytes += toRead;
+    }
+
+    uint32_t t1 = millis();
+    uint32_t dt = t1 - t0;
+
+    _sd.close();
+
+    float kb = totalBytes / 1024.0f;
+    float sec = dt / 1000.0f;
+    float kbps = kb / sec;
+
+    _vga.clear(0);
+
+    char line[32];
+
+    snprintf(line, sizeof(line), "Read: %.1f KB", kb);
+    _tiles.print(line, 1, 1, COLOR_GREEN);
+
+    snprintf(line, sizeof(line), "Time: %.2f s", sec);
+    _tiles.print(line, 1, 2, COLOR_GREEN);
+
+    snprintf(line, sizeof(line), "Speed: %.0f KB/s", kbps);
+    _tiles.print(line, 1, 3, COLOR_YELLOW);
+
+}
+
 void Player::update(float dt) {
+
+    // _tiles.render();
+    // _vga.show();
+
     if (!isFinished()) {
-        // _vga.clear(0);
         playFrame();
+
+        char framebuf[6];
+        itoa(currentFrame, framebuf, 10);
+        _tiles.print(framebuf, 0, 29, COLOR_GREEN);
+
+
+        char dtbuf[16];
+        dtostrf(dt, 0, 3, dtbuf);
+        _tiles.print(dtbuf, 5, 29, COLOR_BLUE);
+
+
+        _tiles.render();
+        _vga.show();
     }
 }
 
@@ -95,13 +160,13 @@ bool Player::readHeader() {
     _rb->readBytes(magic, 3);
 
     if (memcmp(magic, "RVV", 3) != 0) {
-        _console.printLn("Not an RVV file");
+        _tiles.print("Not an RVV file", 1, 1, COLOR_RED);
         return false;
     }
 
     uint8_t version = _rb->readU8();
     if (version < 5) {
-        _console.printLn("Unsupported RVV version");
+        _tiles.print("Unsupported RVV version", 1, 1, COLOR_RED);
         return false;
     }
 
@@ -119,6 +184,8 @@ bool Player::readHeader() {
 
     stateFB = (uint8_t*)ps_malloc(width * height);
     memset(stateFB, 0, width * height);
+
+    directColor = (bpp == 8);
 
     return true;
 }
@@ -139,6 +206,26 @@ void Player::unpackTile(uint16_t tileIndex, const uint8_t* data) {
     int px = tx * tileW;
     int py = ty * tileH;
 
+    // ------------------------------------------------------------
+    // 8 BPP — DIRECT COLOR (RGB332)
+    // ------------------------------------------------------------
+    if (directColor) {
+        const uint8_t* src = data;
+
+        for (int y = 0; y < tileH; y++) {
+            memcpy(
+                &stateFB[(py + y) * width + px],
+                src,
+                tileW
+            );
+            src += tileW;
+        }
+        return;
+    }
+
+    // ------------------------------------------------------------
+    // Indexed modes (1/2/4 bpp)
+    // ------------------------------------------------------------
     int bit = 0;
     int byte = 0;
 
@@ -162,6 +249,7 @@ void Player::unpackTile(uint16_t tileIndex, const uint8_t* data) {
     }
 }
 
+
 void Player::playFrame() {
     if (!_rb->available())
         return;
@@ -172,7 +260,7 @@ void Player::playFrame() {
     uint16_t tileIndex = 0;
 
     static uint8_t tileBuf[64];
-    const int bytesPerTile = (tileW * tileH * bpp) >> 3;
+    const int bytesPerTile = directColor ? (tileW * tileH) : ((tileW * tileH * bpp) >> 3);
 
     for (uint16_t i = 0; i < updateCount; i++) {
         uint8_t skip;
@@ -196,8 +284,9 @@ void Player::playFrame() {
         );
     }
 
-    _vga.show();
 }
+
+
 
 bool Player::isFinished() const {
     return currentFrame >= frameCount;

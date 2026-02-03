@@ -17,7 +17,7 @@ SDCard::~SDCard() {
 
 bool SDCard::init() {
     SPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
-    inited_ = SD.begin(SD_CS);
+    inited_ = SD.begin(SD_CS, SPI, 20000000);
     return inited_;
 }
 

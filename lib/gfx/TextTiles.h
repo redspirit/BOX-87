@@ -47,6 +47,7 @@ public:
     );
     void hideImage();
     void imageY(int16_t y);
+    void setTransparent(bool enabled);
 
 private:
     VGA* vga_ = nullptr;
@@ -64,6 +65,8 @@ private:
     int fgX_ = 0;
     int fgY_ = 0;
     bool fgVisible_ = false;
+    
+    bool transparent_ = true;
 
     inline CharTile& tileAt(int x, int y) {
         return tilemap_[y * gridW_ + x];

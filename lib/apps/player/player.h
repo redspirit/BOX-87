@@ -2,7 +2,7 @@
 #include "ISubsystem.h"
 #include "SDCard.h"
 #include "VGA.h"
-#include "console.h"
+#include "TextTiles.h"
 #include "SdReadBuffer.h"
 
 class Player : public ISubsystem {
@@ -17,7 +17,7 @@ class Player : public ISubsystem {
     private:
         VGA& _vga;
         SDCard _sd;
-        Console _console;
+        TextTiles _tiles;
         SdReadBuffer* _rb = nullptr;
 
         bool open(const char* path);
@@ -34,6 +34,7 @@ class Player : public ISubsystem {
         uint16_t frameCount;
         uint16_t paletteSize;
         uint16_t keyframeInterval;
+        bool directColor;
 
         // playback
         uint16_t currentFrame = 0;
@@ -50,4 +51,5 @@ class Player : public ISubsystem {
         bool readHeader();
         void readPalette();
         void unpackTile(uint16_t tileIndex, const uint8_t* data);
+        void testSDReadSpeed(const char* path);
 };

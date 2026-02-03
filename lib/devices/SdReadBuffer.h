@@ -20,7 +20,7 @@ public:
 private:
     fs::File* _file;
 
-    static constexpr size_t BUF_SIZE = 4096;
+    static constexpr size_t BUF_SIZE = 8192 * 2; // 8kb
     uint8_t _buf[BUF_SIZE];
     size_t _pos = 0;
     size_t _size = 0;
