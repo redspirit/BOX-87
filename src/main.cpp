@@ -1,9 +1,9 @@
 #include "VGA.h"
-
 #include "AppManager.h"
 #include "shell/shell.h"
 #include "LOG.h"
 #include <Arduino.h>
+#include <AudioBeepTest.h>
 
 const PinConfig pins(
     -1, -1, 4, 5, 6,
@@ -31,6 +31,10 @@ void setup() {
 
     app.setDefault(createShell);
     app.startDefault();
+
+    AudioBeepTest::init();
+    AudioBeepTest::play(2000);
+
 }
 
 void loop() {
