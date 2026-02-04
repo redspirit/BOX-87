@@ -31,16 +31,13 @@ bool Player::init() {
     _tiles.setTransparent(false);
 
     if (!_sd.init()) {
-        _tiles.print("SD card not initialized", 1, 1, COLOR_RED);
+        _tiles.print("Err _sd.init()", 1, 1, COLOR_RED);
         return false;
     }
 
-
     // testSDReadSpeed("/badapple.rvv");
 
-    // if (!open("/badapple.rvv")) {
     if (!open("/titans.rvv")) {
-    // if (!open("/dan.rvv")) {
         _tiles.print("Failed to open RVV", 1, 1, COLOR_RED);
         return false;
     }
@@ -62,22 +59,23 @@ void Player::testSDReadSpeed(const char* path) {
         return;
     }
 
-    _tiles.print("Started test speed", 1, 1, COLOR_RED);
-
     _rb = new SdReadBuffer(_sd.file());
 
-    static uint8_t buf[8192];
+    // Важно: буфер назначения тоже лучше бы в DMA, 
+    // но memcpy из SRAM (rb) в PSRAM (buf) работает быстро.
+    // Если buf на стеке - это SRAM, всё ок.
+    static uint8_t buf[4096]; 
 
     uint32_t totalBytes = 0;
     uint32_t t0 = millis();
 
-    while (_rb->available()) {
-        int toRead = _rb->available();
-        if (toRead > (int)sizeof(buf))
-            toRead = sizeof(buf);
-
-        _rb->readBytes(buf, toRead);
-        totalBytes += toRead;
+    while (true) {
+        // Запрашиваем чтение куска
+        size_t read = _rb->readBytes(buf, sizeof(buf));
+        
+        if (read == 0) break; // Конец файла
+        
+        totalBytes += read;
     }
 
     uint32_t t1 = millis();
@@ -108,6 +106,7 @@ void Player::update(float dt) {
 
     // _tiles.render();
     // _vga.show();
+    // return;
 
     if (!isFinished()) {
         playFrame();
@@ -289,7 +288,6 @@ void Player::playFrame() {
     }
 
 }
-
 
 
 bool Player::isFinished() const {

@@ -3,9 +3,7 @@
 #include <stdint.h>
 #include <cstddef>
 
-namespace fs {
-    class File;
-}
+#include <FS.h>
 
 class SDCard {
 public:
@@ -33,7 +31,7 @@ public:
     bool writeTextFile(const char* path, const char* text);
     bool appendTextFile(const char* path, const char* text);
 
-    fs::File* file() { return currentFile_; }
+    File* file() { return currentFile_.operator bool() ? &currentFile_ : nullptr; }
     
     bool readTextFileLimited(
         const char* path,
@@ -54,5 +52,5 @@ private:
     static constexpr int MAX_DIR_ENTRIES = 64;
 
 private:
-    fs::File* currentFile_ = nullptr;
+    File currentFile_;
 };
