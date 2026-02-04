@@ -13,7 +13,9 @@ static uint16_t readU16(SDCard& sd) {
     return lo | (hi << 8);
 }
 
-Player::Player(VGA& vga, const ShellParser& args, const char* fullPath): _vga(vga), _sd(), _tiles(), _argc(args.argc) {
+Player::Player(VGA& vga, const ShellParser& args, const char* fullPath): 
+    _vga(vga), _sd(), _tiles(), _kb(), _argc(args.argc), stateFB(nullptr), _rb(nullptr) {
+
     for (int i = 0; i < _argc; ++i) {
         strncpy(_argv[i], args.argv[i], SHELL_ARG_LEN);
         _argv[i][SHELL_ARG_LEN - 1] = 0;
@@ -24,6 +26,12 @@ Player::Player(VGA& vga, const ShellParser& args, const char* fullPath): _vga(vg
 }
 
 Player::~Player() {
+
+    if (stateFB) {
+        free(stateFB);   // или heap_caps_free
+        stateFB = nullptr;
+    }
+
     if (_rb) {
         delete _rb;
         _rb = nullptr;
@@ -34,6 +42,7 @@ Player::~Player() {
 bool Player::init() {
     _vga.clear(0);
     paletteInit();
+    _kb.init();
     _tiles.init(_vga, 8, 8);
     _tiles.setTransparent(false);
 
@@ -59,16 +68,16 @@ bool Player::init() {
 }
 
 void Player::update(float dt) {
-    if (!isFinished()) {
+
+    if (_kb.isJustPressed(Keyboard::ESC)) requestExit();
+    if (_kb.isJustPressed(Keyboard::SPACE)) doPause();
+
+    if (!_isPause && !isFinished()) {
         playFrame();
 
         char framebuf[8];
         itoa(currentFrame, framebuf, 10);
         _tiles.print(framebuf, 0, 29, COLOR_GREEN);
-
-        char dtbuf[8];
-        dtostrf(dt, 0, 3, dtbuf);
-        _tiles.print(dtbuf, 5, 29, COLOR_BLUE);
 
         char fpsbuf[8];
         dtostrf(1 / dt, 0, 1, fpsbuf);
@@ -77,10 +86,16 @@ void Player::update(float dt) {
         _tiles.render();
         _vga.show();
     }
+
+    _kb.beginFrame();
 }
 
 void Player::tick() {
+    _kb.poll();
+}
 
+void Player::doPause() {
+    _isPause = !_isPause;
 }
 
 bool Player::open(const char* path) {
@@ -103,6 +118,7 @@ bool Player::open(const char* path) {
     tilesY = height / tileH;
 
     currentFrame = 0;
+    _isPause = false;
 
     return true;
 }

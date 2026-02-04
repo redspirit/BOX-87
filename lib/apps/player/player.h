@@ -3,6 +3,7 @@
 #include "SDCard.h"
 #include "VGA.h"
 #include "TextTiles.h"
+#include "keyboard.h"
 #include "SdReadBuffer.h"
 #include "shell/shell_parser.h"
 
@@ -25,6 +26,7 @@ class Player : public ISubsystem {
         VGA& _vga;
         SDCard _sd;
         TextTiles _tiles;
+        Keyboard _kb;
         SdReadBuffer* _rb = nullptr;
 
         int  _argc;
@@ -35,6 +37,7 @@ class Player : public ISubsystem {
         bool open(const char* path);
         void playFrame();
         bool isFinished() const;
+        void doPause();
 
         // header
         uint16_t width;
@@ -51,6 +54,7 @@ class Player : public ISubsystem {
         // playback
         uint16_t currentFrame = 0;
         uint8_t* stateFB; // width * height
+        bool _isPause = false;
 
         // geometry
         uint16_t tilesX;
@@ -64,5 +68,4 @@ class Player : public ISubsystem {
         bool readHeader();
         void readPalette();
         void unpackTile(uint16_t tileIndex, const uint8_t* data);
-        void testSDReadSpeed(const char* path);
 };

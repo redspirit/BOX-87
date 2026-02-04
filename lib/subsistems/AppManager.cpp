@@ -64,7 +64,7 @@ void AppManager::tick() {
         _exitRequested = true;
     }
 
-    if (_next) {
+    if (_exitRequested || _next) {
         performSwitch();
     }
 }
