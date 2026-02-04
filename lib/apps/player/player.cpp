@@ -141,6 +141,12 @@ bool Player::readHeader() {
 
     _frameTimeMs = 1000 / fps;
 
+    if (height < _vga.height()) {
+        _vgaYOffset = (_vga.height() - height) / 2;
+    } else {
+        _vgaYOffset = 0;
+    }
+
     return true;
 }
 
@@ -232,7 +238,7 @@ void Player::playFrame() {
 
     for (int y = 0; y < height; y++) {
         memcpy(
-            _vga.getLinePtr8(y),
+            _vga.getLinePtr8(y + _vgaYOffset),
             &stateFB[y * width],
             width
         );

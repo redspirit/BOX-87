@@ -55,6 +55,7 @@ class Player : public ISubsystem {
         // geometry
         uint16_t tilesX;
         uint16_t tilesY;
+        int16_t _vgaYOffset;
 
         // palette
         uint8_t palette[256]; // формат 332
