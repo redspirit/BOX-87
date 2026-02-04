@@ -4,10 +4,13 @@
 #include "VGA.h"
 #include "TextTiles.h"
 #include "SdReadBuffer.h"
+#include "shell/shell_parser.h"
+
+#define MAX_PATH 128
 
 class Player : public ISubsystem {
     public:
-        Player(VGA& _vga);
+        Player(VGA& _vga, const ShellParser& args, const char* fullPath);
         ~Player();
 
         bool init() override;
@@ -23,6 +26,10 @@ class Player : public ISubsystem {
         SDCard _sd;
         TextTiles _tiles;
         SdReadBuffer* _rb = nullptr;
+
+        int  _argc;
+        char _argv[SHELL_MAX_ARGS][SHELL_ARG_LEN];
+        char _path[MAX_PATH];
 
         uint32_t _frameTimeMs = 16;
         bool open(const char* path);

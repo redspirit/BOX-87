@@ -601,16 +601,16 @@ static bool cmd_play(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    // if (!shell.sdcard().fileExists(path)) {
-    //     con.setColor(COLOR_RED);
-    //     con.print("File not found: ");
-    //     con.printLn(path);
-    //     con.useDefaultColor();
-    //     return false;
-    // }
+    if (!shell.sdcard().fileExists(path)) {
+        con.setColor(COLOR_RED);
+        con.print("File not found: ");
+        con.printLn(path);
+        con.useDefaultColor();
+        return false;
+    }
 
     shell.app().requestSwitch(
-        new Player(shell.vga())
+        new Player(shell.vga(), cmd, path)
     ); 
 
     return true;

@@ -13,7 +13,14 @@ static uint16_t readU16(SDCard& sd) {
     return lo | (hi << 8);
 }
 
-Player::Player(VGA& vga): _vga(vga), _sd(), _tiles() {
+Player::Player(VGA& vga, const ShellParser& args, const char* fullPath): _vga(vga), _sd(), _tiles(), _argc(args.argc) {
+    for (int i = 0; i < _argc; ++i) {
+        strncpy(_argv[i], args.argv[i], SHELL_ARG_LEN);
+        _argv[i][SHELL_ARG_LEN - 1] = 0;
+    }
+    
+    strncpy(_path, fullPath, MAX_PATH);
+    _path[MAX_PATH - 1] = 0;
 }
 
 Player::~Player() {
@@ -35,10 +42,10 @@ bool Player::init() {
         return false;
     }
 
-    // testSDReadSpeed("/badapple.rvv");
-
-    if (!open("/titans.rvv")) {
-        _tiles.print("Failed to open RVV", 1, 1, COLOR_RED);
+    // указывает переданный в параметрах файл
+    if (!open(_path)) {
+        _tiles.print("Failed to open RVV file", 1, 1, COLOR_RED);
+        _tiles.print(_argv[1], 1, 2, COLOR_RED);
         return false;
     }
 
@@ -51,63 +58,7 @@ bool Player::init() {
     return true;
 }
 
-void Player::testSDReadSpeed(const char* path) {
-    if (!_sd.open(path)) {
-        _tiles.print("SD open failed", 1, 1, COLOR_RED);
-        _tiles.render();
-        _vga.show();
-        return;
-    }
-
-    _rb = new SdReadBuffer(_sd.file());
-
-    // Важно: буфер назначения тоже лучше бы в DMA, 
-    // но memcpy из SRAM (rb) в PSRAM (buf) работает быстро.
-    // Если buf на стеке - это SRAM, всё ок.
-    static uint8_t buf[4096]; 
-
-    uint32_t totalBytes = 0;
-    uint32_t t0 = millis();
-
-    while (true) {
-        // Запрашиваем чтение куска
-        size_t read = _rb->readBytes(buf, sizeof(buf));
-        
-        if (read == 0) break; // Конец файла
-        
-        totalBytes += read;
-    }
-
-    uint32_t t1 = millis();
-    uint32_t dt = t1 - t0;
-
-    _sd.close();
-
-    float kb = totalBytes / 1024.0f;
-    float sec = dt / 1000.0f;
-    float kbps = kb / sec;
-
-    _vga.clear(0);
-
-    char line[32];
-
-    snprintf(line, sizeof(line), "Read: %.1f KB", kb);
-    _tiles.print(line, 1, 1, COLOR_GREEN);
-
-    snprintf(line, sizeof(line), "Time: %.2f s", sec);
-    _tiles.print(line, 1, 2, COLOR_GREEN);
-
-    snprintf(line, sizeof(line), "Speed: %.0f KB/s", kbps);
-    _tiles.print(line, 1, 3, COLOR_YELLOW);
-
-}
-
 void Player::update(float dt) {
-
-    // _tiles.render();
-    // _vga.show();
-    // return;
-
     if (!isFinished()) {
         playFrame();
 
