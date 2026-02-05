@@ -3,6 +3,7 @@
 #include "shell.h"
 #include "helloworld/helloworld.h"
 #include "player/player.h"
+#include "audio/audio.h"
 #include "AppManager.h"
 
 #include <string.h>
@@ -33,6 +34,7 @@ static bool cmd_lua(Shell& shell, ShellParser& cmd);
 static bool cmd_mem(Shell& shell, ShellParser& cmd);
 static bool cmd_hw(Shell& shell, ShellParser& cmd);
 static bool cmd_play(Shell& shell, ShellParser& cmd);
+static bool cmd_pcm(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -63,6 +65,7 @@ static const ShellCommand commands[] = {
     { "MEM", cmd_mem, "Show memory info" },
     { "HW", cmd_hw, "Start Hello World application" },
     { "PLAY", cmd_play, "Play media file" },
+    { "PCM", cmd_pcm, "Play pcm audio file" },
 };
 
 static const int commandCount =
@@ -611,6 +614,38 @@ static bool cmd_play(Shell& shell, ShellParser& cmd) {
 
     shell.app().requestSwitch(
         new Player(shell.vga(), cmd, path)
+    ); 
+
+    return true;
+}
+
+static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    if (cmd.argc < 2) {
+        con.setColor(COLOR_RED);
+        con.printLn("Usage: PCM <file>");
+        con.useDefaultColor();
+        return false;
+    }
+
+    char path[MAX_PATH];
+    shell.resolvePath(cmd.argv[1], path);
+
+    if (!sdCheck(shell)) {
+        return false;
+    }
+
+    // if (!shell.sdcard().fileExists(path)) {
+    //     con.setColor(COLOR_RED);
+    //     con.print("File not found: ");
+    //     con.printLn(path);
+    //     con.useDefaultColor();
+    //     return false;
+    // }
+
+    shell.app().requestSwitch(
+        new Audio(shell.vga(), path)
     ); 
 
     return true;
