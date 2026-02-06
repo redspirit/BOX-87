@@ -186,8 +186,6 @@ void TextTiles::render() {
 
 void TextTiles::renderTile(int px, int py, const CharTile& t) {
     const uint8_t* glyph = font8x8::get(t.ch);
-    uint8_t fg = getColorByPalette(t.color);
-    uint8_t bg = getColorByPalette(0); // чёрный
 
     for (int y = 0; y < tileH_; y++) {
         uint8_t row = glyph[y];
@@ -197,9 +195,9 @@ void TextTiles::renderTile(int px, int py, const CharTile& t) {
             bool bit = row & (1 << (7 - x));
 
             if (bit) {
-                dst[x] = fg;
+                dst[x] = t.color;
             } else if (!transparent_) {
-                dst[x] = bg;
+                dst[x] = 0; // black
             }
             // если transparent_ == true и bit == 0 → ничего не делаем
         }

@@ -22,7 +22,8 @@ class Console {
 
         void clear();
 
-        void setColor(uint8_t color);
+        void setColor(uint8_t colorIndex);
+        void setColorRaw(uint8_t color);
         void useDefaultColor();
 
         void print(const char* text);
@@ -56,8 +57,8 @@ class Console {
         int width_  = 0;
         int height_ = 0;
 
-        uint8_t currentColor_ = 0;
-        uint8_t defaultColor_ = 0;
+        uint8_t currentColor_ = 255; // white
+        uint8_t defaultColor_ = 255; // white
 
         // ring buffer
         CharTile* buffer_ = nullptr;

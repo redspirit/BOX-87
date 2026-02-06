@@ -20,7 +20,7 @@ static bool cmd_cls(Shell& shell, ShellParser& cmd);
 static bool cmd_help(Shell& shell, ShellParser& cmd);
 static bool cmd_reboot(Shell& shell, ShellParser& cmd);
 static bool cmd_font(Shell& shell, ShellParser& cmd);
-static bool cmd_colors(Shell& shell, ShellParser& cmd);
+static bool cmd_palette(Shell& shell, ShellParser& cmd);
 static bool cmd_pwd(Shell& shell, ShellParser& cmd);
 static bool cmd_cd(Shell& shell, ShellParser& cmd);
 static bool cmd_dir(Shell& shell, ShellParser& cmd);
@@ -35,6 +35,7 @@ static bool cmd_mem(Shell& shell, ShellParser& cmd);
 static bool cmd_hw(Shell& shell, ShellParser& cmd);
 static bool cmd_play(Shell& shell, ShellParser& cmd);
 static bool cmd_pcm(Shell& shell, ShellParser& cmd);
+static bool cmd_color(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -51,7 +52,7 @@ static const ShellCommand commands[] = {
     { "CLS",  cmd_cls,  "Clear screen" },
     { "REBOOT", cmd_reboot, "Restart system" },
     { "FONT",   cmd_font,  "Show font table" },
-    { "COLORS",  cmd_colors,  "Show color palette" },
+    { "PALETTE",  cmd_palette,  "Show color palette" },
     { "PWD",  cmd_pwd,  "Show current directory" },
     { "CD",  cmd_cd,  "Change current directory" },
     { "DIR",  cmd_dir,  "List directory contents" },
@@ -66,6 +67,7 @@ static const ShellCommand commands[] = {
     { "HW", cmd_hw, "Start Hello World application" },
     { "PLAY", cmd_play, "Play media file" },
     { "PCM", cmd_pcm, "Play pcm audio file" },
+    { "COLOR", cmd_color, "Show specific color" },
 };
 
 static const int commandCount =
@@ -228,7 +230,7 @@ static bool cmd_font(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_colors(Shell& shell, ShellParser& cmd) {
+static bool cmd_palette(Shell& shell, ShellParser& cmd) {
     auto& con = shell.console();
 
     con.setColor(COLOR_CYAN);
@@ -648,5 +650,67 @@ static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
         new Audio(shell.vga(), path)
     ); 
 
+    return true;
+}
+
+static bool cmd_color(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    if (cmd.argc < 3) {
+        con.setColor(COLOR_RED);
+        con.printLn("Usage: COLOR BIT 11111111");
+        con.printLn("Usage: COLOR HEX FF");
+        con.useDefaultColor();
+        return false;
+    }
+    const char* mode  = cmd.argv[1];
+    const char* value = cmd.argv[2];
+
+    uint8_t color = 0;
+
+    if (!strcasecmp(mode, "BIT")) {
+        size_t len = strlen(value);
+        if (len == 0 || len > 8) {
+            con.setColor(COLOR_RED);
+            con.printLn("BIT value must be 1..8 bits");
+            con.useDefaultColor();
+            return false;
+        }
+
+        for (size_t i = 0; i < len; ++i) {
+            char c = value[i];
+            if (c != '0' && c != '1') {
+                con.setColor(COLOR_RED);
+                con.printLn("BIT value must contain only 0 or 1");
+                con.useDefaultColor();
+                return false;
+            }
+            color = (color << 1) | (c - '0');
+        }
+    } else if (!strcasecmp(mode, "HEX")) {
+        char* end = nullptr;
+        unsigned long v = strtoul(value, &end, 16);
+        if (*end != 0 || v > 0xFF) {
+            con.setColor(COLOR_RED);
+            con.printLn("HEX value must be 00..FF");
+            con.useDefaultColor();
+            return false;
+        }
+        color = (uint8_t)v;
+    } else {
+        con.setColor(COLOR_RED);
+        con.printLn("Unknown format (use BIT or HEX)");
+        con.useDefaultColor();
+        return false;
+    }
+
+    con.setColorRaw(color);
+
+    for (int y = 0; y < 5; ++y) {
+        con.printRawChar((char)219, 10);
+        con.printLn();
+    }
+
+    con.useDefaultColor();
     return true;
 }

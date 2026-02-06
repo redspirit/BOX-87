@@ -3,6 +3,7 @@
 #include "VGA.h"
 #include <stdlib.h>
 #include <string.h>
+#include <palette.h>
 
 Console::Console() {}
 
@@ -55,7 +56,11 @@ void Console::clear() {
     cx_ = cy_ = 0;
 }
 
-void Console::setColor(uint8_t color) {
+void Console::setColor(uint8_t colorIndex) {
+    currentColor_ = getColorByPalette(colorIndex);
+}
+
+void Console::setColorRaw(uint8_t color) {
     currentColor_ = color;
 }
 

@@ -23,7 +23,7 @@ Shell::~Shell() {
 
 bool Shell::init() {
     paletteInit();
-    _console.init(_vga, 8, 8, COLOR_WHITE);
+    _console.init(_vga, 8, 8, 255); // default color white
     _console.setCursorVisible(true);
     _kb.init();
 
