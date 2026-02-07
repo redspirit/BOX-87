@@ -25,3 +25,4 @@
 
 void paletteInit();
 uint8_t getColorByPalette(uint8_t index);
+uint8_t getRgb322(uint8_t r, uint8_t g, uint8_t b);

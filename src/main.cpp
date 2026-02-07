@@ -1,13 +1,13 @@
+#include <Arduino.h>
 #include "VGA.h"
 #include "AppManager.h"
 #include "shell/shell.h"
 #include "LOG.h"
-#include <Arduino.h>
 
 const PinConfig pins(
     -1, -1, 4, 5, 6,
-    -1, -1, -1, 7, 8, 9,
-    -1, -1, -1, 10, 11,
+    -1, -1, -1, 7, 9, 8,
+    -1, -1, 14, 11, 10,
     12, 13 // H, V
 );
 

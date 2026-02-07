@@ -658,8 +658,10 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
 
     if (cmd.argc < 3) {
         con.setColor(COLOR_RED);
-        con.printLn("Usage: COLOR BIT 11111111");
+        con.printLn("Usage: COLOR BIN 11111111");
         con.printLn("Usage: COLOR HEX FF");
+        con.printLn("Usage: COLOR RGB <R> <G> <B>");      
+        con.printLn("Usage: COLOR GRADIENT BLUE");      
         con.useDefaultColor();
         return false;
     }
@@ -668,7 +670,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
 
     uint8_t color = 0;
 
-    if (!strcasecmp(mode, "BIT")) {
+    if (!strcasecmp(mode, "BIN")) {
         size_t len = strlen(value);
         if (len == 0 || len > 8) {
             con.setColor(COLOR_RED);
@@ -697,9 +699,68 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
             return false;
         }
         color = (uint8_t)v;
+    } else if (!strcasecmp(mode, "RGB")) {
+        if (cmd.argc < 5) {
+            con.setColor(COLOR_RED);
+            con.printLn("Usage: COLOR RGB <R> <G> <B>");
+            con.useDefaultColor();
+            return false;
+        }
+
+        auto parseByte = [&](const char* s, uint8_t& out) -> bool {
+            char* end = nullptr;
+            long v = strtol(s, &end, 10);
+            if (*end != 0 || v < 0 || v > 255)
+                return false;
+            out = (uint8_t)v;
+            return true;
+        };
+
+        uint8_t r, g, b;
+        if (!parseByte(cmd.argv[2], r) ||
+            !parseByte(cmd.argv[3], g) ||
+            !parseByte(cmd.argv[4], b)) {
+            con.setColor(COLOR_RED);
+            con.printLn("RGB values must be 0..255");
+            con.useDefaultColor();
+            return false;
+        }
+
+        color = getRgb322(r, g, b);
+    } else if (!strcasecmp(mode, "GRADIENT")) {
+
+        // blue gradient
+        for (int cv = 0; cv < 4; cv++) {
+            con.setColorRaw(cv << 6);
+            con.printRawChar((char)219, 20);
+            con.useDefaultColor();
+            con.print(cv);
+            con.printLn();
+        }        
+        
+        // green gradient
+        for (int cv = 0; cv < 8; cv++) {
+            con.setColorRaw(cv << 3);
+            con.printRawChar((char)219, 20);
+            con.useDefaultColor();
+            con.print(cv);
+            con.printLn();
+        }
+
+        // red gradient
+        for (int cv = 0; cv < 8; cv++) {
+            con.setColorRaw(cv);
+            con.printRawChar((char)219, 20);
+            con.useDefaultColor();
+            con.print(cv);
+            con.printLn();
+        }
+
+        con.useDefaultColor();
+        return true;
     } else {
         con.setColor(COLOR_RED);
-        con.printLn("Unknown format (use BIT or HEX)");
+        con.printLn("Unknown format (use BIN or HEX)");
         con.useDefaultColor();
         return false;
     }
