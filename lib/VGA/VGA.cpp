@@ -38,7 +38,7 @@ void VGA::attachPinToSignal(int pin, int signal) {
 	gpio_set_drive_capability((gpio_num_t)pin, (gpio_drive_cap_t)3);
 }
 
-bool VGA::init(const PinConfig cfgPins, const Mode mode, int bits=8) {
+bool VGA::init(const PinConfig cfgPins, const Mode mode, int bits) {
 	this->pins = cfgPins;
 	this->mode = mode;
 	this->bits = bits;
@@ -115,11 +115,11 @@ bool VGA::init(const PinConfig cfgPins, const Mode mode, int bits=8) {
 		for (int i = 0; i < bits; i++) 
 			if (pins[i] >= 0) 
 				attachPinToSignal(pins[i], LCD_DATA_OUT0_IDX + i);
-				
+
 	} else if(bits == 16) {
 		int pins[16] = {
-			this->pins.r[0], this->pins.r[1], this->pins.r[2], this->pins.r[3], this->pins.r[4],
-			this->pins.g[0], this->pins.g[1], this->pins.g[2], this->pins.g[3], this->pins.g[4], this->pins.g[5],
+			this->pins.r[2], this->pins.r[3], this->pins.r[4],
+			this->pins.g[2], this->pins.g[3], this->pins.g[4], this->pins.g[5],
 			this->pins.b[0], this->pins.b[1], this->pins.b[2], this->pins.b[3], this->pins.b[4]
 		};
 		for (int i = 0; i < bits; i++) 
@@ -179,16 +179,21 @@ bool VGA::show() {
 	return true;
 }
 
-void VGA::dot(int x, int y, int rgb) {
+void VGA::dot8(int x, int y, int rgb) {
 	if(x >= mode.hRes || y >= mode.vRes) return;
 	dmaBuffer->getLineAddr8(y, backBuffer)[x] = rgb;
+}
+
+void VGA::dot16(int x, int y, int rgb) {
+	if(x >= mode.hRes || y >= mode.vRes) return;
+	dmaBuffer->getLineAddr16(y, backBuffer)[x] = rgb;
 }
 
 void VGA::clear(uint8_t color) {
 	dmaBuffer->clearFast(color, backBuffer);
 }
 
-void VGA::fillRect(int x, int y, int w, int h, int rgb) {
+void VGA::fillRect8(int x, int y, int w, int h, int rgb) {
     int x2 = x + w;
     int y2 = y + h;
 
@@ -200,7 +205,21 @@ void VGA::fillRect(int x, int y, int w, int h, int rgb) {
 
     for (int yy = y; yy < y2; yy++)
         for (int xx = x; xx < x2; xx++)
-            dot(xx, yy, rgb);
+            dot8(xx, yy, rgb);
+}
+
+void VGA::fillRect16(int x, int y, int w, int h, int rgb) {
+    int x2 = x + w;
+    int y2 = y + h;
+
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x2 > mode.hRes) x2 = mode.hRes;
+    if (y2 > mode.vRes) y2 = mode.vRes;
+
+    for (int yy = y; yy < y2; yy++)
+        for (int xx = x; xx < x2; xx++)
+            dot16(xx, yy, rgb);
 }
 
 uint8_t* VGA::getLinePtr8Safe(int y) {

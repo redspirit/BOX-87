@@ -7,7 +7,7 @@
 const PinConfig pins(
     -1, -1, 4, 5, 6,
     -1, -1, -1, 7, 9, 8,
-    -1, -1, 14, 11, 10,
+    -1, -1, 11, 10, 14,
     12, 13 // H, V
 );
 
@@ -23,7 +23,7 @@ ISubsystem* createShell() {
 
 void setup() {
 	LOG.begin(115200);
-	if(!vga.init(pins, mode)) while(1) delay(1);
+	if(!vga.init(pins, mode, 8)) while(1) delay(1);
 	vga.start();
 
     LOG.println("Started!!!");

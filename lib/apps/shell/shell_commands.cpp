@@ -726,7 +726,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
             return false;
         }
 
-        color = getRgb322(r, g, b);
+        color = rgb332(r, g, b);
     } else if (!strcasecmp(mode, "GRADIENT")) {
 
         // blue gradient

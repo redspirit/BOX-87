@@ -14,11 +14,15 @@ class VGA {
 		inline int width() const  { return mode.hRes; }
 		inline int height() const { return mode.vRes; }		
 		void clear(uint8_t color);
-		void fillRect(int x, int y, int w, int h, int rgb);
-		void dot(int x, int y, int rgb);
-    	inline uint8_t* getLinePtr8(int y) {
-			// указатель на начало строки (8 бит на пиксель)
+		void fillRect8(int x, int y, int w, int h, int rgb);
+		void fillRect16(int x, int y, int w, int h, int rgb);
+		void dot8(int x, int y, int rgb);
+		void dot16(int x, int y, int rgb);
+    	inline uint8_t* getLinePtr8(int y) { // указатель на начало строки (8 бит на пиксель)
 			return dmaBuffer->getLineAddr8(y, backBuffer);
+		}
+		inline uint16_t* getLinePtr16(int y) { // указатель на начало строки (16 бит на пиксель)
+			return dmaBuffer->getLineAddr16(y, backBuffer);
 		} 
     	uint8_t* getLinePtr8Safe(int y);	// с проверкой диапазона y
 

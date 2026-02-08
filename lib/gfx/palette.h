@@ -25,4 +25,12 @@
 
 void paletteInit();
 uint8_t getColorByPalette(uint8_t index);
-uint8_t getRgb322(uint8_t r, uint8_t g, uint8_t b);
+static inline uint8_t rgb332(uint8_t r, uint8_t g, uint8_t b) {
+    return (r >> 5) | ((g >> 5) << 3) | (b & 0b11000000);
+}
+static inline uint16_t rgb333(uint8_t r, uint8_t g, uint8_t b) {
+    uint16_t r3 = r >> 5;
+    uint16_t g3 = g >> 5;
+    uint16_t b3 = b >> 5;
+    return (r3) | (g3 << 4) | (b3 << 9);
+}

@@ -3,10 +3,6 @@
 
 uint8_t palette[PALETTE_SIZE];
 
-static inline uint8_t rgb332(uint8_t r, uint8_t g, uint8_t b) {
-	return (r >> 5) | ((g >> 5) << 3) | (b & 0b11000000);
-}
-
 // ------------------------------------------------------------
 // ИНИЦИАЛИЗАЦИЯ ПАЛИТРЫ
 // ------------------------------------------------------------
@@ -73,8 +69,4 @@ void paletteInit() {
 
 uint8_t getColorByPalette(uint8_t index) {
     return palette[index];
-}
-
-uint8_t getRgb322(uint8_t r, uint8_t g, uint8_t b) {
-    return rgb332(r, g, b);
 }
