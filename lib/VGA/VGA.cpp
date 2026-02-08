@@ -38,8 +38,7 @@ void VGA::attachPinToSignal(int pin, int signal) {
 	gpio_set_drive_capability((gpio_num_t)pin, (gpio_drive_cap_t)3);
 }
 
-bool VGA::init(const PinConfig cfgPins, const Mode mode) {
-	int bits = 8;
+bool VGA::init(const PinConfig cfgPins, const Mode mode, int bits=8) {
 	this->pins = cfgPins;
 	this->mode = mode;
 	this->bits = bits;
@@ -48,8 +47,7 @@ bool VGA::init(const PinConfig cfgPins, const Mode mode) {
 	//TODO check start
 
 	dmaBuffer = new DMAVideoBuffer(mode.vRes, mode.hRes * (bits / 8), mode.vClones, true, usePsram, bufferCount);
-	if(!dmaBuffer->isValid())
-	{
+	if(!dmaBuffer->isValid()) {
 		delete dmaBuffer;
 		return false;
 	}
@@ -75,7 +73,6 @@ bool VGA::init(const PinConfig cfgPins, const Mode mode) {
 	LCD_CAM.lcd_clock.lcd_ck_out_edge = 0;		
 	LCD_CAM.lcd_clock.lcd_ck_idle_edge = 0;
 	LCD_CAM.lcd_clock.lcd_clk_equ_sysclk = 1;
-
 
 	LCD_CAM.lcd_ctrl.lcd_rgb_mode_en = 1;
 	LCD_CAM.lcd_user.lcd_2byte_en = (bits==8)?0:1;
@@ -109,14 +106,26 @@ bool VGA::init(const PinConfig cfgPins, const Mode mode) {
 
 	LCD_CAM.lcd_misc.lcd_next_frame_en = 1; //?? limitation
 
-	int pins[8] = {
-		this->pins.r[2], this->pins.r[3], this->pins.r[4],
-		this->pins.g[3], this->pins.g[4], this->pins.g[5],
-		this->pins.b[3], this->pins.b[4]
-	};
-	for (int i = 0; i < bits; i++) 
-		if (pins[i] >= 0) 
-			attachPinToSignal(pins[i], LCD_DATA_OUT0_IDX + i);
+	if(bits == 8) {
+		int pins[8] = {
+			this->pins.r[2], this->pins.r[3], this->pins.r[4],
+			this->pins.g[3], this->pins.g[4], this->pins.g[5],
+			this->pins.b[3], this->pins.b[4]
+		};
+		for (int i = 0; i < bits; i++) 
+			if (pins[i] >= 0) 
+				attachPinToSignal(pins[i], LCD_DATA_OUT0_IDX + i);
+				
+	} else if(bits == 16) {
+		int pins[16] = {
+			this->pins.r[0], this->pins.r[1], this->pins.r[2], this->pins.r[3], this->pins.r[4],
+			this->pins.g[0], this->pins.g[1], this->pins.g[2], this->pins.g[3], this->pins.g[4], this->pins.g[5],
+			this->pins.b[0], this->pins.b[1], this->pins.b[2], this->pins.b[3], this->pins.b[4]
+		};
+		for (int i = 0; i < bits; i++) 
+			if (pins[i] >= 0) 
+				attachPinToSignal(pins[i], LCD_DATA_OUT0_IDX + i);
+	}
 
 	attachPinToSignal(this->pins.hSync, LCD_H_SYNC_IDX);
 	attachPinToSignal(this->pins.vSync, LCD_V_SYNC_IDX);

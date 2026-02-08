@@ -8,7 +8,7 @@ class VGA {
 	public:
 		VGA();
 		~VGA();
-		bool init(const PinConfig cfgPins, const Mode mode);
+		bool init(const PinConfig cfgPins, const Mode mode, int bits);
 		bool start();
 		bool show();
 		inline int width() const  { return mode.hRes; }

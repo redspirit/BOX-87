@@ -1,4 +1,4 @@
 #pragma once
 #include <Arduino.h>
 
-#define LOG Serial0
+#define LOG Serial
