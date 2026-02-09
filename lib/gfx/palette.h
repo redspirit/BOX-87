@@ -32,5 +32,6 @@ static inline uint16_t rgb333(uint8_t r, uint8_t g, uint8_t b) {
     uint16_t r3 = r >> 5;
     uint16_t g3 = g >> 5;
     uint16_t b3 = b >> 5;
-    return (r3) | (g3 << 4) | (b3 << 9);
+    // return (r3) | (g3 << 4) | (b3 << 9);
+    return (r3) | (g3 << 3) | (b3 << 6);
 }

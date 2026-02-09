@@ -108,21 +108,21 @@ bool VGA::init(const PinConfig cfgPins, const Mode mode, int bits) {
 
 	if(bits == 8) {
 		int pins[8] = {
-			this->pins.r[2], this->pins.r[3], this->pins.r[4],
-			this->pins.g[3], this->pins.g[4], this->pins.g[5],
-			this->pins.b[3], this->pins.b[4]
+			this->pins.r[0], this->pins.r[1], this->pins.r[2],
+			this->pins.g[0], this->pins.g[1], this->pins.g[2],
+			this->pins.b[1], this->pins.b[2]
 		};
-		for (int i = 0; i < bits; i++) 
+		for (int i = 0; i < 8; i++) 
 			if (pins[i] >= 0) 
 				attachPinToSignal(pins[i], LCD_DATA_OUT0_IDX + i);
 
 	} else if(bits == 16) {
-		int pins[16] = {
-			this->pins.r[2], this->pins.r[3], this->pins.r[4],
-			this->pins.g[2], this->pins.g[3], this->pins.g[4], this->pins.g[5],
-			this->pins.b[0], this->pins.b[1], this->pins.b[2], this->pins.b[3], this->pins.b[4]
+		int pins[9] = {
+			this->pins.r[0], this->pins.r[1], this->pins.r[2],
+			this->pins.g[0], this->pins.g[1], this->pins.g[2],
+			this->pins.b[0], this->pins.b[1], this->pins.b[2],
 		};
-		for (int i = 0; i < bits; i++) 
+		for (int i = 0; i < 9; i++) 
 			if (pins[i] >= 0) 
 				attachPinToSignal(pins[i], LCD_DATA_OUT0_IDX + i);
 	}
