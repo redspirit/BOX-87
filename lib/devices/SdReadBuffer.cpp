@@ -1,12 +1,16 @@
 #include "SdReadBuffer.h"
 #include <string.h>
+#include <esp_heap_caps.h>
 
-SdReadBuffer::SdReadBuffer(fs::File* file) : _file(file), _pos(0), _size(0) {
-    // Выделяем память строго в DMA-доступной SRAM (не PSRAM)
+SdReadBuffer::SdReadBuffer(fs::File* file)
+    : _file(file),
+      _buf(nullptr),
+      _pos(0),
+      _size(0),
+      _filePos(0) {
+
     _buf = (uint8_t*)heap_caps_malloc(BUF_SIZE, MALLOC_CAP_DMA);
-    
     if (!_buf) {
-        // Если памяти не хватило, можно попробовать обычный malloc или обработать ошибку
         _buf = (uint8_t*)malloc(BUF_SIZE);
     }
 }
@@ -25,16 +29,16 @@ bool SdReadBuffer::available() const {
 
 void SdReadBuffer::refill() {
     if (!_file || !_buf) return;
-    // Читаем максимально возможный блок
-    // SD_MMC любит большие блоки, кратные 512 байтам
+
     _size = _file->read(_buf, BUF_SIZE);
     _pos = 0;
+    _filePos += _size;
 }
 
 uint8_t SdReadBuffer::readU8() {
     if (_pos >= _size) {
         refill();
-        if (_size == 0) return 0; // EOF
+        if (_size == 0) return 0;
     }
     return _buf[_pos++];
 }
@@ -47,29 +51,45 @@ uint16_t SdReadBuffer::readU16() {
 
 size_t SdReadBuffer::readBytes(void* dst, size_t len) {
     uint8_t* out = (uint8_t*)dst;
-    size_t totalRead = 0;
+    size_t total = 0;
 
     while (len > 0) {
         size_t avail = _size - _pos;
 
-        // Если в буфере пусто, заполняем
         if (avail == 0) {
             refill();
             avail = _size;
-            // Если после refill всё еще 0 - значит конец файла
-            if (avail == 0) break; 
+            if (avail == 0) break;
         }
 
-        // Берем сколько нужно или сколько есть
         size_t chunk = (len < avail) ? len : avail;
-
         memcpy(out, _buf + _pos, chunk);
 
         _pos += chunk;
         out += chunk;
         len -= chunk;
-        totalRead += chunk;
+        total += chunk;
     }
-    
-    return totalRead;
+
+    return total;
+}
+
+bool SdReadBuffer::seek(size_t pos) {
+    if (!_file) return false;
+
+    // позиционируем файл
+    if (!_file->seek(pos)) {
+        return false;
+    }
+
+    // сбрасываем буфер
+    _pos = 0;
+    _size = 0;
+    _filePos = pos;
+
+    return true;
+}
+
+size_t SdReadBuffer::tell() const {
+    return _filePos - (_size - _pos);
 }

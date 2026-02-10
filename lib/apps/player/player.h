@@ -39,33 +39,27 @@ class Player : public ISubsystem {
         bool isFinished() const;
         void doPause();
 
-        // header
+        // RV header
         uint16_t width;
         uint16_t height;
+        uint16_t fps;
+        uint32_t frameCount;
+        uint8_t  bpp;
         uint8_t  tileW;
         uint8_t  tileH;
-        uint8_t  bpp;
-        uint8_t  fps;
-        uint16_t frameCount;
-        uint16_t paletteSize;
-        uint16_t keyframeInterval;
-        bool directColor;
+        uint32_t videoOffset;
 
-        // playback
-        uint16_t currentFrame = 0;
-        uint8_t* stateFB; // width * height
-        bool _isPause = false;
-
-        // geometry
         uint16_t tilesX;
         uint16_t tilesY;
-        int16_t _vgaYOffset;
 
-        // palette
-        uint8_t palette[256]; // формат 332
+        uint32_t currentFrame;
+        uint32_t _vgaYOffset;
+
+        bool _isPause;
+
+        uint8_t* stateFB;
 
         // helpers
         bool readHeader();
-        void readPalette();
         void unpackTile(uint16_t tileIndex, const uint8_t* data);
 };

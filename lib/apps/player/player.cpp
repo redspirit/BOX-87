@@ -1,26 +1,48 @@
 #include "player.h"
-#include "palette.h"
 #include <esp32-hal-psram.h>
+#include <palette.h>
+#include <string.h>
+#include <LOG.h>
 
-// ------------------------------------------------------------
-// helpers
-// ------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Utils
+// -----------------------------------------------------------------------------
 
-static uint16_t readU16(SDCard& sd) {
-    uint8_t lo, hi;
-    sd.read(&lo, 1);
-    sd.read(&hi, 1);
+static uint16_t readU16(SdReadBuffer* rb) {
+    uint8_t lo = rb->readU8();
+    uint8_t hi = rb->readU8();
     return lo | (hi << 8);
 }
 
-Player::Player(VGA& vga, const ShellParser& args, const char* fullPath): 
-    _vga(vga), _sd(), _tiles(), _kb(), _argc(args.argc), stateFB(nullptr), _rb(nullptr) {
+static uint32_t readU32(SdReadBuffer* rb) {
+    uint32_t v = 0;
+    v |= rb->readU8();
+    v |= rb->readU8() << 8;
+    v |= rb->readU8() << 16;
+    v |= rb->readU8() << 24;
+    return v;
+}
+
+// -----------------------------------------------------------------------------
+// Ctor / Dtor
+// -----------------------------------------------------------------------------
+
+Player::Player(VGA& vga, const ShellParser& args, const char* fullPath)
+    : _vga(vga),
+      _sd(),
+      _tiles(),
+      _kb(),
+      _rb(nullptr),
+      _argc(args.argc),
+      currentFrame(0),
+      _isPause(false),
+      stateFB(nullptr) {
 
     for (int i = 0; i < _argc; ++i) {
         strncpy(_argv[i], args.argv[i], SHELL_ARG_LEN);
         _argv[i][SHELL_ARG_LEN - 1] = 0;
     }
-    
+
     strncpy(_path, fullPath, MAX_PATH);
     _path[MAX_PATH - 1] = 0;
 }
@@ -28,7 +50,7 @@ Player::Player(VGA& vga, const ShellParser& args, const char* fullPath):
 Player::~Player() {
 
     if (stateFB) {
-        free(stateFB);   // или heap_caps_free
+        heap_caps_free(stateFB);
         stateFB = nullptr;
     }
 
@@ -36,52 +58,62 @@ Player::~Player() {
         delete _rb;
         _rb = nullptr;
     }
+
     _sd.close();
 }
 
+// -----------------------------------------------------------------------------
+// Init
+// -----------------------------------------------------------------------------
+
 bool Player::init() {
     _vga.clear(0);
-    paletteInit();
     _kb.init();
+
     _tiles.init(_vga, 8, 8);
     _tiles.setTransparent(false);
 
     if (!_sd.init()) {
-        _tiles.print("Err _sd.init()", 1, 1, COLOR_RED);
+        _tiles.print("SD init failed", 1, 1, COLOR_RED);
         return false;
     }
 
-    // указывает переданный в параметрах файл
     if (!open(_path)) {
-        _tiles.print("Failed to open RVV file", 1, 1, COLOR_RED);
-        _tiles.print(_argv[1], 1, 2, COLOR_RED);
+        _tiles.print("Failed to open RV file", 1, 1, COLOR_RED);
         return false;
     }
-
-    _tiles.render();
-    _vga.show();
 
     _vga.clear(0);
     _vga.show();
-
+    _vga.clear(0);
+    _vga.show();
     return true;
 }
 
+// -----------------------------------------------------------------------------
+// Update / Tick
+// -----------------------------------------------------------------------------
+
 void Player::update(float dt) {
 
-    if (_kb.isJustPressed(Keyboard::ESC)) requestExit();
-    if (_kb.isJustPressed(Keyboard::SPACE)) doPause();
+    if (_kb.isJustPressed(Keyboard::ESC)) {
+        requestExit();
+    }
+
+    if (_kb.isJustPressed(Keyboard::SPACE)) {
+        doPause();
+    }
 
     if (!_isPause && !isFinished()) {
         playFrame();
 
-        char framebuf[8];
-        itoa(currentFrame, framebuf, 10);
-        _tiles.print(framebuf, 0, 29, COLOR_GREEN);
+        char buf[16];
+        itoa(currentFrame, buf, 10);
+        _tiles.print(buf, 0, 29, COLOR_GREEN);
 
         char fpsbuf[8];
         dtostrf(1 / dt, 0, 1, fpsbuf);
-        _tiles.print(fpsbuf, 11, 29, COLOR_CYAN);
+        _tiles.print(fpsbuf, 11, 29, COLOR_WHITE);
 
         _tiles.render();
         _vga.show();
@@ -98,21 +130,31 @@ void Player::doPause() {
     _isPause = !_isPause;
 }
 
+// -----------------------------------------------------------------------------
+// File open
+// -----------------------------------------------------------------------------
+
 bool Player::open(const char* path) {
+
+    LOG.println("Do open");
+
     if (!_sd.open(path)) {
         return false;
     }
 
-    if (_sd.file() == nullptr)
+    if (_sd.file() == nullptr) {
         return false;
+    }
 
     _rb = new SdReadBuffer(_sd.file());
+
+    LOG.println("before read header");
 
     if (!readHeader()) {
         return false;
     }
 
-    readPalette();
+    LOG.println("after read header");
 
     tilesX = width / tileW;
     tilesY = height / tileH;
@@ -120,40 +162,58 @@ bool Player::open(const char* path) {
     currentFrame = 0;
     _isPause = false;
 
+    // jump to video stream
+    _rb->seek(videoOffset);
+
     return true;
 }
 
-bool Player::readHeader() {
-    char magic[3];
-    _rb->readBytes(magic, 3);
+// -----------------------------------------------------------------------------
+// Header
+// -----------------------------------------------------------------------------
 
-    if (memcmp(magic, "RVV", 3) != 0) {
-        _tiles.print("Not an RVV file", 1, 1, COLOR_RED);
+bool Player::readHeader() {
+
+    char magic[2];
+    _rb->readBytes(magic, 2);
+
+    if (memcmp(magic, "RV", 2) != 0) {
+        _tiles.print("Not RV file", 1, 1, COLOR_RED);
         return false;
     }
 
     uint8_t version = _rb->readU8();
-    if (version < 5) {
-        _tiles.print("Unsupported RVV version", 1, 1, COLOR_RED);
+    if (version != 4) {
+        _tiles.print("Need RV v4", 1, 1, COLOR_RED);
         return false;
     }
 
-    width  = _rb->readU16();
-    height = _rb->readU16();
+    width       = readU16(_rb);
+    height      = readU16(_rb);
+    fps         = readU16(_rb);
+    frameCount  = readU32(_rb);
+    bpp         = _rb->readU8();
+    tileW       = _rb->readU8();
+    tileH       = _rb->readU8();
+    videoOffset = readU32(_rb);
 
-    tileW = _rb->readU8();
-    tileH = _rb->readU8();
-    bpp   = _rb->readU8();
-    fps   = _rb->readU8();
+    // skip audio info
+    readU32(_rb); // audioOffset
+    readU32(_rb); // audioRate
+    readU32(_rb); // audioSamples
 
-    frameCount       = _rb->readU16();
-    paletteSize      = _rb->readU16();
-    keyframeInterval = _rb->readU16();
+    if (bpp != 8) {
+        _tiles.print("Only 8bpp supported", 1, 1, COLOR_RED);
+        return false;
+    }
 
     stateFB = (uint8_t*)ps_malloc(width * height);
-    memset(stateFB, 0, width * height);
+    if (!stateFB) {
+        _tiles.print("No PSRAM", 1, 1, COLOR_RED);
+        return false;
+    }
 
-    directColor = (bpp == 8);
+    memset(stateFB, 0, width * height);
 
     _frameTimeMs = 1000 / fps;
 
@@ -166,92 +226,60 @@ bool Player::readHeader() {
     return true;
 }
 
-void Player::readPalette() {
-    for (int i = 0; i < paletteSize; i++) {
-        uint8_t r = _rb->readU8();
-        uint8_t g = _rb->readU8();
-        uint8_t b = _rb->readU8();
-        palette[i] = (r >> 5) | ((g >> 5) << 3) | (b & 0b11000000);
-    }
-}
+// -----------------------------------------------------------------------------
+// Frame decode
+// -----------------------------------------------------------------------------
 
 void Player::unpackTile(uint16_t tileIndex, const uint8_t* data) {
+
     uint16_t tx = tileIndex % tilesX;
     uint16_t ty = tileIndex / tilesX;
 
     int px = tx * tileW;
     int py = ty * tileH;
 
-    // ------------------------------------------------------------
-    // 8 BPP — DIRECT COLOR (RGB332)
-    // ------------------------------------------------------------
-    if (directColor) {
-        const uint8_t* src = data;
-
-        for (int y = 0; y < tileH; y++) {
-            memcpy(
-                &stateFB[(py + y) * width + px],
-                src,
-                tileW
-            );
-            src += tileW;
-        }
-        return;
-    }
-
-    // ------------------------------------------------------------
-    // Indexed modes (1/2/4 bpp)
-    // ------------------------------------------------------------
-    int bit = 0;
-    int byte = 0;
+    const uint8_t* src = data;
 
     for (int y = 0; y < tileH; y++) {
-        uint8_t* line = &stateFB[(py + y) * width];
-
-        for (int x = 0; x < tileW; x++) {
-            uint8_t v = 0;
-
-            for (int b = 0; b < bpp; b++) {
-                v = (v << 1) | ((data[byte] >> (7 - bit)) & 1);
-                bit++;
-                if (bit == 8) {
-                    bit = 0;
-                    byte++;
-                }
-            }
-
-            line[px + x] = palette[v];
-        }
+        memcpy(
+            &stateFB[(py + y) * width + px],
+            src,
+            tileW
+        );
+        src += tileW;
     }
 }
 
-
 void Player::playFrame() {
-    if (!_rb->available())
+
+    if (!_rb->available()) {
         return;
+    }
 
     uint8_t flags = _rb->readU8();
-    uint16_t updateCount = _rb->readU16();
+    (void)flags;
+
+    uint16_t updateCount = readU16(_rb);
 
     uint16_t tileIndex = 0;
-
     static uint8_t tileBuf[64];
-    const int bytesPerTile = directColor ? (tileW * tileH) : ((tileW * tileH * bpp) >> 3);
 
     for (uint16_t i = 0; i < updateCount; i++) {
+
         uint8_t skip;
         do {
             skip = _rb->readU8();
             tileIndex += skip;
         } while (skip == 255);
 
-        _rb->readBytes(tileBuf, bytesPerTile);
+        _rb->readBytes(tileBuf, tileW * tileH);
         unpackTile(tileIndex, tileBuf);
         tileIndex++;
     }
 
     currentFrame++;
 
+    // blit framebuffer to VGA
     for (int y = 0; y < height; y++) {
         memcpy(
             _vga.getLinePtr8(y + _vgaYOffset),
@@ -259,9 +287,7 @@ void Player::playFrame() {
             width
         );
     }
-
 }
-
 
 bool Player::isFinished() const {
     return currentFrame >= frameCount;

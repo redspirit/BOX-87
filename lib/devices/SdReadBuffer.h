@@ -16,6 +16,8 @@ public:
     size_t readBytes(void* dst, size_t len); 
     
     bool available() const;
+    bool seek(size_t pos);
+    size_t tell() const;
 
 private:
     fs::File* _file;
@@ -28,6 +30,7 @@ private:
 
     size_t _pos = 0;
     size_t _size = 0; // Сколько байт реально сейчас в буфере
+    size_t _filePos = 0;   // абсолютная позиция в файле
 
     void refill();
 };
