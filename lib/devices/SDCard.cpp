@@ -5,8 +5,8 @@
 
 // ===== SD_MMC 1-bit pins for ESP32-S3 =====
 #define SD_MMC_CLK  18
-#define SD_MMC_CMD  17  // Физически это пин MOSI на твоем переходнике
-#define SD_MMC_D0   16  // Физически это пин MISO на твоем переходнике
+#define SD_MMC_CMD  17
+#define SD_MMC_D0   16
 
 static bool sd_mmc_global_inited = false;
 
@@ -244,7 +244,7 @@ bool SDCard::writeTextFile(const char* path, const char* text) {
 
     if (text && *text) {
         f.print(text);
-        f.print("\n"); // Добавляем перенос строки, как в оригинале
+        f.print("\n"); // Добавляем перенос строки
     }
 
     f.close();

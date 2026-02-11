@@ -48,6 +48,7 @@ Player::Player(VGA& vga, const ShellParser& args, const char* fullPath)
 }
 
 Player::~Player() {
+    _audio.stop();
 
     if (stateFB) {
         heap_caps_free(stateFB);
@@ -102,6 +103,12 @@ void Player::update(float dt) {
 
     if (_kb.isJustPressed(Keyboard::SPACE)) {
         doPause();
+    }
+
+    // --- sync audio to video ---
+    if (_audio.isPlaying()) {
+        _audio.syncToFrame(currentFrame, fps);
+        _audio.pause(_isPause);
     }
 
     if (!_isPause && !isFinished()) {
@@ -162,6 +169,17 @@ bool Player::open(const char* path) {
     currentFrame = 0;
     _isPause = false;
 
+    // --- init audio ---
+    if (audioSamples > 0) {
+        _audio.init(
+            _rb,
+            audioOffset,
+            audioSamples,
+            audioRate
+        );
+        _audio.start();
+    }
+
     // jump to video stream
     _rb->seek(videoOffset);
 
@@ -188,19 +206,17 @@ bool Player::readHeader() {
         return false;
     }
 
-    width       = readU16(_rb);
-    height      = readU16(_rb);
-    fps         = readU16(_rb);
-    frameCount  = readU32(_rb);
-    bpp         = _rb->readU8();
-    tileW       = _rb->readU8();
-    tileH       = _rb->readU8();
-    videoOffset = readU32(_rb);
-
-    // skip audio info
-    readU32(_rb); // audioOffset
-    readU32(_rb); // audioRate
-    readU32(_rb); // audioSamples
+    width        = readU16(_rb);
+    height       = readU16(_rb);
+    fps          = readU16(_rb);
+    frameCount   = readU32(_rb);
+    bpp          = _rb->readU8();
+    tileW        = _rb->readU8();
+    tileH        = _rb->readU8();
+    videoOffset  = readU32(_rb);
+    audioOffset  = readU32(_rb);
+    audioRate    = readU32(_rb);
+    audioSamples = readU32(_rb);
 
     if (bpp != 8) {
         _tiles.print("Only 8bpp supported", 1, 1, COLOR_RED);

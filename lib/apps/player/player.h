@@ -6,6 +6,7 @@
 #include "keyboard.h"
 #include "SdReadBuffer.h"
 #include "shell/shell_parser.h"
+#include "Audio.h"
 
 #define MAX_PATH 128
 
@@ -28,6 +29,8 @@ class Player : public ISubsystem {
         TextTiles _tiles;
         Keyboard _kb;
         SdReadBuffer* _rb = nullptr;
+        Audio _audio;
+        
 
         int  _argc;
         char _argv[SHELL_MAX_ARGS][SHELL_ARG_LEN];
@@ -48,6 +51,9 @@ class Player : public ISubsystem {
         uint8_t  tileW;
         uint8_t  tileH;
         uint32_t videoOffset;
+        uint32_t audioOffset;
+        uint32_t audioSamples;
+        uint32_t audioRate;
 
         uint16_t tilesX;
         uint16_t tilesY;

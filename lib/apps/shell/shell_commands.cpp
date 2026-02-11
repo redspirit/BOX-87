@@ -3,7 +3,6 @@
 #include "shell.h"
 #include "helloworld/helloworld.h"
 #include "player/player.h"
-#include "audio/audio.h"
 #include "AppManager.h"
 
 #include <string.h>
@@ -646,9 +645,9 @@ static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
     //     return false;
     // }
 
-    shell.app().requestSwitch(
-        new Audio(shell.vga(), path)
-    ); 
+    // shell.app().requestSwitch(
+    //     new Audio(shell.vga(), path)
+    // ); 
 
     return true;
 }
