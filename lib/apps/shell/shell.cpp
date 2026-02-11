@@ -4,10 +4,8 @@
 #include "shell_parser.h"
 #include "shell_commands.h"
 #include <shell/logo.h>
-
 #include <string.h>
 #include <stdio.h>
-
 
 Shell::Shell(VGA& vga, AppManager& app)
     : _vga(vga),
@@ -46,8 +44,33 @@ bool Shell::init() {
     _console.printLn(" SRAM 388K PSRAM 8191K");
     _console.printLn(" VGA: 320x240");
     _console.printLn(" KEYBOARD: Ready");
-    _console.printLn(" SD: Unavailable");
+    _console.print(" SD: ");
+    if (_sd.init()) {
+        uint64_t total = _sd.totalBytes();
+        uint64_t free  = _sd.freeBytes();
+        _console.print(int(free / (1024 * 1024)));
+        _console.print("/");
+        _console.print(int(total / (1024 * 1024)));
+        _console.print(" MB (");
+        _console.print(int((free * 100ULL + total / 2) / total));
+        _console.printLn("%)");
+        _sd.close();
+    } else {
+        _console.printLn("Unavailable");
+    }
     _console.printLn();
+    _console.print(" ");
+    _console.setColor(2); _console.print((char)219);
+    _console.setColor(3); _console.print((char)219);
+    _console.setColor(4); _console.print((char)219);
+    _console.setColor(5); _console.print((char)219);
+    _console.setColor(6); _console.print((char)219);
+    _console.setColor(7); _console.print((char)219);
+    _console.setColor(8); _console.print((char)219);
+    _console.setColor(9); _console.print((char)219);
+    _console.printLn();
+    _console.printLn();
+    _console.setColor(COLOR_GREEN);
     _console.printLn(" Type HELP for commands");
     _console.printLn();
     _console.useDefaultColor();

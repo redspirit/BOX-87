@@ -266,3 +266,24 @@ bool SDCard::appendTextFile(const char* path, const char* text) {
     f.close();
     return true;
 }
+
+uint64_t SDCard::totalBytes() {
+    if (!inited_) return 0;
+    return SD_MMC.totalBytes();
+}
+
+uint64_t SDCard::usedBytes() {
+    if (!inited_) return 0;
+    return SD_MMC.usedBytes();
+}
+
+uint64_t SDCard::freeBytes() {
+    if (!inited_) return 0;
+
+    uint64_t total = SD_MMC.totalBytes();
+    uint64_t used  = SD_MMC.usedBytes();
+
+    if (total < used) return 0;
+
+    return total - used;
+}

@@ -31,6 +31,10 @@ public:
     bool writeTextFile(const char* path, const char* text);
     bool appendTextFile(const char* path, const char* text);
 
+    uint64_t totalBytes();
+    uint64_t usedBytes();
+    uint64_t freeBytes();
+
     File* file() { return currentFile_.operator bool() ? &currentFile_ : nullptr; }
     
     bool readTextFileLimited(
