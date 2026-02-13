@@ -31,7 +31,6 @@ class Player : public ISubsystem {
         SdReadBuffer* _rb = nullptr;
         Audio _audio;
         
-
         int  _argc;
         char _argv[SHELL_MAX_ARGS][SHELL_ARG_LEN];
         char _path[MAX_PATH];

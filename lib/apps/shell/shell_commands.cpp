@@ -10,6 +10,7 @@
 #include <esp_system.h>
 
 #define TYPE_MAX_SIZE 1024
+#define SDSPEED_BUFFER  (32 * 1024)  // 32 KB
 
 /* =========================================================
  *  COMMAND HANDLERS
@@ -35,6 +36,7 @@ static bool cmd_hw(Shell& shell, ShellParser& cmd);
 static bool cmd_play(Shell& shell, ShellParser& cmd);
 static bool cmd_pcm(Shell& shell, ShellParser& cmd);
 static bool cmd_color(Shell& shell, ShellParser& cmd);
+static bool cmd_sdspeed(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -67,6 +69,7 @@ static const ShellCommand commands[] = {
     { "PLAY", cmd_play, "Play media file" },
     { "PCM", cmd_pcm, "Play pcm audio file" },
     { "COLOR", cmd_color, "Show specific color" },
+    { "SDSPEED", cmd_sdspeed, "Test speed of file read from sd" },
 };
 
 static const int commandCount =
@@ -493,6 +496,105 @@ static bool cmd_append(Shell& shell, ShellParser& cmd) {
         con.useDefaultColor();
         return false;
     }
+
+    return true;
+}
+
+static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    if (cmd.argc < 1) {
+        con.setColor(COLOR_RED);
+        con.printLn("Usage: SDSPEED <file>");
+        con.useDefaultColor();
+        return false;
+    }
+
+    char path[MAX_PATH];
+    shell.resolvePath(cmd.argv[1], path);
+
+    if (!sdCheck(shell)) {
+        return false;
+    }
+
+    size_t fileSize = shell.sdcard().fileSize(path);
+    if (fileSize == 0) {
+        con.setColor(COLOR_RED);
+        con.printLn("File not found or empty");
+        con.useDefaultColor();        
+        return false;
+    }
+
+    if (!shell.sdcard().open(path)) {
+        con.setColor(COLOR_RED);
+        con.printLn("Failed to open file");
+        con.useDefaultColor();          
+        return false;
+    }
+
+    uint8_t* buffer = (uint8_t*)malloc(SDSPEED_BUFFER);
+    if (!buffer) {
+        con.setColor(COLOR_RED);        
+        con.printLn("Out of memory!");
+        con.useDefaultColor();
+        shell.sdcard().close();
+        return false;
+    }
+
+    uint64_t totalRead = 0;
+    uint32_t startTime = millis();
+    uint32_t lastReport = startTime;
+    uint64_t lastReadBytes = 0;
+
+    con.printLn("Starting SD speed test...");
+    con.printLn();
+
+    while (shell.sdcard().available()) {
+        size_t toRead = SDSPEED_BUFFER;
+        if (fileSize - totalRead < SDSPEED_BUFFER)
+            toRead = fileSize - totalRead;
+
+        size_t read = shell.sdcard().read(buffer, toRead);
+        if (read == 0)
+            break;
+
+        totalRead += read;
+
+        uint32_t now = millis();
+
+        // Раз в секунду выводим статистику
+        if (now - lastReport >= 1000) {
+
+            uint32_t interval = now - lastReport;
+            uint64_t intervalBytes = totalRead - lastReadBytes;
+            uint32_t speedKB = (intervalBytes / 1024) * 1000 / interval;
+            uint32_t percent = (totalRead * 100ULL) / fileSize;
+
+            con.print((int)percent); con.print("%  ");
+            con.print((int)totalRead); con.print(" bytes ");
+            con.print((int)speedKB); con.printLn(" KB/s");
+
+            lastReport = now;
+            lastReadBytes = totalRead;
+        }
+        delay(0);
+    }
+
+    uint32_t endTime = millis();
+    uint32_t totalTime = endTime - startTime;
+
+    shell.sdcard().close();
+    free(buffer);
+
+    if (totalTime == 0) totalTime = 1;
+
+    uint32_t avgKB = (totalRead / 1024) * 1000 / totalTime;
+
+    con.printLn();
+    con.printLn("=== SD SPEED SUMMARY ===");
+    con.print("File size: "); con.printLn(fileSize);
+    con.print("Time: "); con.print((int)totalTime); con.printLn(" ms");
+    con.print("Average speed: "); con.print((int)avgKB); con.printLn(" KB/s");    
 
     return true;
 }
