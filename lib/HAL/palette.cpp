@@ -1,5 +1,4 @@
 #include "palette.h"
-#include "VGA.h"
 
 uint8_t palette[PALETTE_SIZE];
 

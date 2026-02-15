@@ -1,37 +1,31 @@
 #include <Arduino.h>
-#include "VGA.h"
-#include "AppManager.h"
-#include "shell/shell.h"
-#include "LOG.h"
-
-const PinConfig pins(
-    4, 5, 6,
-    7, 9, 8,
-    11, 10, 14,
-    12, 13 // H, V
-);
-
-VGA vga;
-Mode mode = Mode::MODE_320x240x60;
-//Mode mode = Mode::MODE_640x480x60;
-
-AppManager app;
-
-ISubsystem* createShell() {
-    return new Shell(vga, app);
-}
+#include "vga.h"
+#include "palette.h"
 
 void setup() {
-	LOG.begin(115200);
-	if(!vga.init(pins, mode, 8)) while(1) delay(1);
-	vga.start();
+    Serial.begin(115200);
+    Serial.println("Starting VGA via esp_lcd...");
 
-    LOG.println("Started!!!");
+    VGA::init();
 
-    app.setDefault(createShell);
-    app.startDefault();
+    // VGA::clear(rgb332(128, 0, 0));
+    // VGA::show();
 }
 
 void loop() {
-    app.tick();
+    VGA::clear(rgb332(128, 0, 0));
+
+    static int x = 0;
+    static int y = 100;
+    static int dirX = 2;
+    static int dirY = 2;
+    
+    VGA::fillRect(x, y, 50, 50, rgb332(255, 0, 0)); 
+    
+    x += dirX;
+    y += dirY;
+    if (x > VGA::width() - 50 || x < 0) dirX = -dirX;
+    if (y > VGA::height() - 50 || y < 0) dirY = -dirY;
+
+    VGA::show();
 }
