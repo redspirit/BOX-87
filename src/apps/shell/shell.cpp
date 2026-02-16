@@ -3,16 +3,13 @@
 #include "LOG.h"
 #include "shell_parser.h"
 #include "shell_commands.h"
-#include <shell/logo.h>
+#include <apps/shell/logo.h>
 #include <string.h>
 #include <stdio.h>
 
-Shell::Shell(VGA& vga, AppManager& app)
-    : _vga(vga),
-      _app(app),
+Shell::Shell(AppManager& app)
+    : _app(app),
       _console(),
-      _sd(),
-      _kb(), 
       _lua() {
 }
 
@@ -21,9 +18,8 @@ Shell::~Shell() {
 
 bool Shell::init() {
     paletteInit();
-    _console.init(_vga, 8, 8, 255); // default color white
+    _console.init(8, 8, 255); // default color white
     _console.setCursorVisible(true);
-    _kb.init();
 
     memset(_cmd, 0, sizeof(_cmd));
     _len = 0;
@@ -42,19 +38,19 @@ bool Shell::init() {
     _console.printLn(" (c) 2026 RedSpirit");
     _console.printLn();
     _console.printLn(" SRAM 388K PSRAM 8191K");
-    _console.printLn(" VGA: 320x240");
+    _console.print(" VGA: "); _console.print(VGA::width()); _console.print("x"); _console.printLn(VGA::height());
     _console.printLn(" KEYBOARD: Ready");
     _console.print(" SD: ");
-    if (_sd.init()) {
-        uint64_t total = _sd.totalBytes();
-        uint64_t free  = _sd.freeBytes();
+    if (SDCARD::init()) {
+        uint64_t total = SDCARD::totalBytes();
+        uint64_t free  = SDCARD::freeBytes();
         _console.print(int(free / (1024 * 1024)));
         _console.print("/");
         _console.print(int(total / (1024 * 1024)));
         _console.print(" MB (");
         _console.print(int((free * 100ULL + total / 2) / total));
         _console.printLn("%)");
-        _sd.close();
+        SDCARD::close();
     } else {
         _console.printLn("Unavailable");
     }
@@ -85,28 +81,28 @@ bool Shell::init() {
 }
 
 void Shell::update(float dt) {
-    _vga.clear(0);
+    VGA::clear(0);
     _console.cursorUpdate(dt);
     
     char c;
-    while (_kb.getChar(c)) {
+    while (KEYBOARD::getChar(c)) {
         onChar(c);
     }
 
-    if (_kb.isJustPressed(Keyboard::BACKSPACE)) onKeyBack();
-    if (_kb.isJustPressed(Keyboard::ENTER))     onKeyEnter();
-    if (_kb.isJustPressed(Keyboard::LEFT))      onKeyLeft();
-    if (_kb.isJustPressed(Keyboard::RIGHT))     onKeyRight();
-    if (_kb.isJustPressed(Keyboard::UP))        onKeyUp();
-    if (_kb.isJustPressed(Keyboard::DOWN))      onKeyDown();
+    if (KEYBOARD::isJustPressed(KEYBOARD::BACKSPACE)) onKeyBack();
+    if (KEYBOARD::isJustPressed(KEYBOARD::ENTER))     onKeyEnter();
+    if (KEYBOARD::isJustPressed(KEYBOARD::LEFT))      onKeyLeft();
+    if (KEYBOARD::isJustPressed(KEYBOARD::RIGHT))     onKeyRight();
+    if (KEYBOARD::isJustPressed(KEYBOARD::UP))        onKeyUp();
+    if (KEYBOARD::isJustPressed(KEYBOARD::DOWN))      onKeyDown();
 
     _console.show();
-    _vga.show();
-    _kb.beginFrame();
+    VGA::show();
+    KEYBOARD::beginFrame();
 }
 
 void Shell::tick() {
-    _kb.poll();
+
 }
 
 void Shell::printPrompt() {

@@ -37,6 +37,7 @@ namespace SDCARD {
 
     bool writeTextFile(const char* path, const char* text);
     bool appendTextFile(const char* path, const char* text);
+    bool readTextFileLimited(const char* path, char* dst, size_t maxLen);
 
     uint64_t totalBytes();
     uint64_t usedBytes();

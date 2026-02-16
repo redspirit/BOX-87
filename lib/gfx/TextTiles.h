@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include "CharTile.h"
 
-class VGA;
-
 struct ImageLayer {
     const uint8_t* data;
     uint16_t width;   // pixels
@@ -21,7 +19,6 @@ public:
     ~TextTiles();
 
     void init(
-        VGA& vga,
         int tileW = 8,
         int tileH = 8
     );
@@ -50,8 +47,6 @@ public:
     void setTransparent(bool enabled);
 
 private:
-    VGA* vga_ = nullptr;
-
     int gridW_ = 0;
     int gridH_ = 0;
     int tileW_ = 0;

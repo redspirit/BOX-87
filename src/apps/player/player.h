@@ -1,18 +1,15 @@
 #pragma once
 #include "ISubsystem.h"
-#include "SDCard.h"
-#include "VGA.h"
 #include "TextTiles.h"
-#include "keyboard.h"
 #include "SdReadBuffer.h"
-#include "shell/shell_parser.h"
+#include "apps/shell/shell_parser.h"
 #include "Audio.h"
 
 #define MAX_PATH 128
 
 class Player : public ISubsystem {
     public:
-        Player(VGA& _vga, const ShellParser& args, const char* fullPath);
+        Player(const ShellParser& args, const char* fullPath);
         ~Player();
 
         bool init() override;
@@ -24,10 +21,7 @@ class Player : public ISubsystem {
         }
 
     private:
-        VGA& _vga;
-        SDCard _sd;
         TextTiles _tiles;
-        Keyboard _kb;
         SdReadBuffer* _rb = nullptr;
         Audio _audio;
         

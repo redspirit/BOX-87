@@ -1,9 +1,10 @@
 #include "shell_commands.h"
 #include "palette.h"
 #include "shell.h"
-#include "helloworld/helloworld.h"
-#include "player/player.h"
+#include "apps/helloworld/helloworld.h"
+// #include "player/player.h"
 #include "AppManager.h"
+#include "sdcard.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -96,7 +97,7 @@ static void dirCallback(void* user, const char* name, bool isDir) {
 
 
 static bool sdCheck(Shell& shell) {
-    if (!shell.sdcard().init()) {
+    if (!SDCARD::init()) {
         shell.console().setColor(COLOR_RED);
         shell.console().printLn("SD card not initialized");
         shell.console().useDefaultColor();
@@ -280,7 +281,7 @@ static bool cmd_cd(Shell& shell, ShellParser& cmd) {
     char newPath[MAX_PATH];
     shell.resolvePath(cmd.argv[1], newPath);
 
-    if (!shell.sdcard().dirExists(newPath)) {
+    if (!SDCARD::dirExists(newPath)) {
         con.setColor(COLOR_RED);
         con.print("Directory not found: ");
         con.printLn(newPath);
@@ -311,7 +312,7 @@ static bool cmd_dir(Shell& shell, ShellParser& cmd) {
     }
 
     // проверка, что это директория
-    if (!shell.sdcard().dirExists(path)) {
+    if (!SDCARD::dirExists(path)) {
         con.setColor(COLOR_RED);
         con.print("Directory not found: ");
         con.printLn(path);
@@ -319,7 +320,7 @@ static bool cmd_dir(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    shell.sdcard().listDir(path, dirCallback, &shell);
+    SDCARD::listDir(path, dirCallback, &shell);
 
     return true;
 }
@@ -343,7 +344,7 @@ static bool cmd_type(Shell& shell, ShellParser& cmd) {
 
     char buffer[TYPE_MAX_SIZE + 1];
 
-    if (!shell.sdcard().readTextFileLimited(path, buffer, TYPE_MAX_SIZE)) {
+    if (!SDCARD::readTextFileLimited(path, buffer, TYPE_MAX_SIZE)) {
         con.setColor(COLOR_RED);
         con.printLn("File not found or too large (max 1 KB)");
         con.useDefaultColor();
@@ -373,7 +374,7 @@ static bool cmd_mkdir(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    if (!shell.sdcard().mkdir(path)) {
+    if (!SDCARD::mkdir(path)) {
         con.setColor(COLOR_RED);
         con.print("Cannot create directory: ");
         con.printLn(path);
@@ -401,7 +402,7 @@ static bool cmd_rd(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    if (!shell.sdcard().rmdirEmpty(path)) {
+    if (!SDCARD::rmdirEmpty(path)) {
         con.setColor(COLOR_RED);
         con.print("Cannot remove directory (not empty?): ");
         con.printLn(path);
@@ -429,7 +430,7 @@ static bool cmd_del(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    if (!shell.sdcard().removeFile(path)) {
+    if (!SDCARD::removeFile(path)) {
         con.setColor(COLOR_RED);
         con.print("Cannot delete file: ");
         con.printLn(path);
@@ -459,7 +460,7 @@ static bool cmd_write(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    if (!shell.sdcard().writeTextFile(path, text)) {
+    if (!SDCARD::writeTextFile(path, text)) {
         con.setColor(COLOR_RED);
         con.print("Cannot write file: ");
         con.printLn(path);
@@ -489,7 +490,7 @@ static bool cmd_append(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    if (!shell.sdcard().appendTextFile(path, text)) {
+    if (!SDCARD::appendTextFile(path, text)) {
         con.setColor(COLOR_RED);
         con.print("Cannot append file: ");
         con.printLn(path);
@@ -517,7 +518,7 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    size_t fileSize = shell.sdcard().fileSize(path);
+    size_t fileSize = SDCARD::fileSize(path);
     if (fileSize == 0) {
         con.setColor(COLOR_RED);
         con.printLn("File not found or empty");
@@ -525,7 +526,7 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    if (!shell.sdcard().open(path)) {
+    if (!SDCARD::open(path)) {
         con.setColor(COLOR_RED);
         con.printLn("Failed to open file");
         con.useDefaultColor();          
@@ -537,7 +538,7 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
         con.setColor(COLOR_RED);        
         con.printLn("Out of memory!");
         con.useDefaultColor();
-        shell.sdcard().close();
+        SDCARD::close();
         return false;
     }
 
@@ -549,12 +550,12 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
     con.printLn("Starting SD speed test...");
     con.printLn();
 
-    while (shell.sdcard().available()) {
+    while (SDCARD::available()) {
         size_t toRead = SDSPEED_BUFFER;
         if (fileSize - totalRead < SDSPEED_BUFFER)
             toRead = fileSize - totalRead;
 
-        size_t read = shell.sdcard().read(buffer, toRead);
+        size_t read = SDCARD::read(buffer, toRead);
         if (read == 0)
             break;
 
@@ -583,7 +584,7 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
     uint32_t endTime = millis();
     uint32_t totalTime = endTime - startTime;
 
-    shell.sdcard().close();
+    SDCARD::close();
     free(buffer);
 
     if (totalTime == 0) totalTime = 1;
@@ -685,7 +686,7 @@ static bool cmd_lua(Shell& shell, ShellParser& cmd) {
 
 static bool cmd_hw(Shell& shell, ShellParser& cmd) {
     shell.app().requestSwitch(
-        new HelloWorld(shell.vga())
+        new HelloWorld()
     );
     return true;
 }
@@ -707,7 +708,7 @@ static bool cmd_play(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    if (!shell.sdcard().fileExists(path)) {
+    if (!SDCARD::fileExists(path)) {
         con.setColor(COLOR_RED);
         con.print("File not found: ");
         con.printLn(path);
@@ -715,9 +716,9 @@ static bool cmd_play(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    shell.app().requestSwitch(
-        new Player(shell.vga(), cmd, path)
-    ); 
+    // shell.app().requestSwitch(
+    //     new Player(cmd, path)
+    // ); 
 
     return true;
 }
@@ -739,7 +740,7 @@ static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    // if (!shell.sdcard().fileExists(path)) {
+    // if (!SDCARD::fileExists(path)) {
     //     con.setColor(COLOR_RED);
     //     con.print("File not found: ");
     //     con.printLn(path);
@@ -748,7 +749,7 @@ static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
     // }
 
     // shell.app().requestSwitch(
-    //     new Audio(shell.vga(), path)
+    //     new Audio(path)
     // ); 
 
     return true;

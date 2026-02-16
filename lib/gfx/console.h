@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include "CharTile.h"
 
-class VGA;
 class TextTiles;
 
 class Console {
@@ -11,7 +10,6 @@ class Console {
         ~Console();
 
         void init(
-            VGA& vga,
             int tileW,
             int tileH,
             uint8_t defaultColor
@@ -52,7 +50,6 @@ class Console {
     private:
         // owned
         TextTiles* tiles_ = nullptr;
-        VGA* vga_ = nullptr;
 
         int width_  = 0;
         int height_ = 0;

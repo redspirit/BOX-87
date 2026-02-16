@@ -1,11 +1,10 @@
 #pragma once
 #include "ISubsystem.h"
 #include "TextTiles.h"
-#include "VGA.h"
 
 class HelloWorld : public ISubsystem {
     public:
-        HelloWorld(VGA& _vga);
+        HelloWorld();
         ~HelloWorld();
 
         bool init() override;
@@ -13,7 +12,6 @@ class HelloWorld : public ISubsystem {
         void tick() override;
 
     private:
-        VGA& _vga;
         TextTiles _tiles;
 
         float _time;

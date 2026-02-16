@@ -1,5 +1,5 @@
 #include "TextTiles.h"
-#include "VGA.h"
+#include "VGA/VGA.h"
 #include "font8x8.h"
 #include "palette.h"
 #include <string.h>
@@ -13,17 +13,15 @@ TextTiles::~TextTiles() {
 }
 
 void TextTiles::init(
-    VGA& vga,
     int tileW,
     int tileH
 ) {
-    vga_ = &vga;
 
     tileW_ = tileW;
     tileH_ = tileH;
 
-    gridW_ = vga.width() / tileW_; // округляется вниз до целого автоматически
-    gridH_ = vga.height() / tileH_;
+    gridW_ = VGA::width() / tileW_; // округляется вниз до целого автоматически
+    gridH_ = VGA::height() / tileH_;
 
     // переаллоцируем, если нужно
     size_t count = gridW_ * gridH_;
@@ -92,12 +90,12 @@ void TextTiles::hideImage() {
 void TextTiles::imageY(int16_t y) {
     _image.y = y;
 
-    if (!_image.data || !_image.height || !vga_) {
+    if (!_image.data || !_image.height) {
         _image.enabled = false;
         return;
     }
 
-    const int screenH = vga_->height();
+    const int screenH = VGA::height();
 
     // положение картинки на экране
     int screenTop    = _image.y;
@@ -125,11 +123,11 @@ void TextTiles::drawText() {
 }
 
 void TextTiles::drawImage() {
-    if (!_image.enabled || !_image.data || !vga_)
+    if (!_image.enabled || !_image.data)
         return;
 
-    const int screenW = vga_->width();
-    const int screenH = vga_->height();
+    const int screenW = VGA::width();
+    const int screenH = VGA::height();
 
     const int bytesPerRow = _image.width / 4;
 
@@ -138,7 +136,7 @@ void TextTiles::drawImage() {
         if (sy < 0 || sy >= screenH)
             continue;
 
-        uint8_t* dst = vga_->getLinePtr8(sy);
+        uint8_t* dst = VGA::getLinePtr8(sy);
 
         const uint8_t* src =
             _image.data + y * bytesPerRow;
@@ -176,7 +174,7 @@ void TextTiles::drawCursor() {
 }
 
 void TextTiles::render() {
-    if (!vga_ || !tilemap_)
+    if (!tilemap_)
         return;
 
     drawText();
@@ -189,7 +187,7 @@ void TextTiles::renderTile(int px, int py, const CharTile& t) {
 
     for (int y = 0; y < tileH_; y++) {
         uint8_t row = glyph[y];
-        uint8_t* dst = vga_->getLinePtr8(py + y) + px;
+        uint8_t* dst = VGA::getLinePtr8(py + y) + px;
 
         for (int x = 0; x < tileW_; x++) {
             bool bit = row & (1 << (7 - x));

@@ -3,6 +3,9 @@
 #include <palette.h>
 #include <string.h>
 #include <LOG.h>
+#include "sdcard.h"
+#include "VGA/VGA.h"
+#include "keyboard.h"
 
 // -----------------------------------------------------------------------------
 // Utils
@@ -27,11 +30,8 @@ static uint32_t readU32(SdReadBuffer* rb) {
 // Ctor / Dtor
 // -----------------------------------------------------------------------------
 
-Player::Player(VGA& vga, const ShellParser& args, const char* fullPath)
-    : _vga(vga),
-      _sd(),
-      _tiles(),
-      _kb(),
+Player::Player(const ShellParser& args, const char* fullPath)
+    : _tiles(),
       _rb(nullptr),
       _argc(args.argc),
       currentFrame(0),
@@ -60,7 +60,7 @@ Player::~Player() {
         _rb = nullptr;
     }
 
-    _sd.close();
+    SDCARD::close();
 }
 
 // -----------------------------------------------------------------------------
@@ -68,13 +68,10 @@ Player::~Player() {
 // -----------------------------------------------------------------------------
 
 bool Player::init() {
-    _vga.clear(0);
-    _kb.init();
-
-    _tiles.init(_vga, 8, 8);
+    _tiles.init(8, 8);
     _tiles.setTransparent(false);
 
-    if (!_sd.init()) {
+    if (!SDCARD::init()) {
         _tiles.print("SD init failed", 1, 1, COLOR_RED);
         return false;
     }
@@ -84,10 +81,7 @@ bool Player::init() {
         return false;
     }
 
-    _vga.clear(0);
-    _vga.show();
-    _vga.clear(0);
-    _vga.show();
+    VGA::clearAll(0);
     return true;
 }
 
@@ -97,11 +91,11 @@ bool Player::init() {
 
 void Player::update(float dt) {
 
-    if (_kb.isJustPressed(Keyboard::ESC)) {
+    if (KEYBOARD::isJustPressed(KEYBOARD::ESC)) {
         requestExit();
     }
 
-    if (_kb.isJustPressed(Keyboard::SPACE)) {
+    if (KEYBOARD::isJustPressed(KEYBOARD::SPACE)) {
         doPause();
     }
 
@@ -123,14 +117,14 @@ void Player::update(float dt) {
         _tiles.print(fpsbuf, 11, 29, COLOR_WHITE);
 
         _tiles.render();
-        _vga.show();
+        VGA::show();
     }
 
-    _kb.beginFrame();
+    KEYBOARD::beginFrame();
 }
 
 void Player::tick() {
-    _kb.poll();
+
 }
 
 void Player::doPause() {
@@ -145,15 +139,15 @@ bool Player::open(const char* path) {
 
     LOG.println("Do open");
 
-    if (!_sd.open(path)) {
+    if (!SDCARD::open(path)) {
         return false;
     }
 
-    if (_sd.file() == nullptr) {
+    if (SDCARD::getFile() == nullptr) {
         return false;
     }
 
-    _rb = new SdReadBuffer(_sd.file());
+    _rb = new SdReadBuffer(SDCARD::getFile());
 
     LOG.println("before read header");
 
@@ -233,8 +227,8 @@ bool Player::readHeader() {
 
     _frameTimeMs = 1000 / fps;
 
-    if (height < _vga.height()) {
-        _vgaYOffset = (_vga.height() - height) / 2;
+    if (height < VGA::height()) {
+        _vgaYOffset = (VGA::height() - height) / 2;
     } else {
         _vgaYOffset = 0;
     }
@@ -298,7 +292,7 @@ void Player::playFrame() {
     // blit framebuffer to VGA
     for (int y = 0; y < height; y++) {
         memcpy(
-            _vga.getLinePtr8(y + _vgaYOffset),
+            VGA::getLinePtr8(y + _vgaYOffset),
             &stateFB[y * width],
             width
         );

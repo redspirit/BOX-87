@@ -2,8 +2,8 @@
 #include "VGA/VGA.h"
 #include "keyboard.h"
 #include "sdcard.h"
-// #include "AppManager.h"
-// #include "shell/shell.h"
+#include "AppManager.h"
+#include "apps/shell/shell.h"
 #include "LOG.h"
 
 const PinConfig vgaPins(
@@ -13,13 +13,13 @@ const PinConfig vgaPins(
     12, 13 // H, V
 );
 
-// Mode vgaMode = Mode::MODE_320x240x60;
-Mode vgaMode = Mode::MODE_640x480x60;
+Mode vgaMode = Mode::MODE_320x240x60;
+// Mode vgaMode = Mode::MODE_640x480x60;
 
-// AppManager app;
-// ISubsystem* createShell() {
-//     return new Shell(vga, app);
-// }
+AppManager app;
+ISubsystem* createShell() {
+    return new Shell(app);
+}
 
 void setup() {
 	LOG.begin(115200);
@@ -33,14 +33,11 @@ void setup() {
 
     SDCARD::init();
 
-    VGA::fillRect8(20, 30, 100, 100, 128);
-    VGA::show();
-
-    // app.setDefault(createShell);
-    // app.startDefault();
+    app.setDefault(createShell);
+    app.startDefault();
 }
 
 void loop() {
-    // app.tick();
+    app.tick();
     KEYBOARD::poll();
 }

@@ -1,6 +1,6 @@
 #include "console.h"
 #include "TextTiles.h"
-#include "VGA.h"
+#include "VGA/VGA.h"
 #include <stdlib.h>
 #include <string.h>
 #include <palette.h>
@@ -19,16 +19,13 @@ Console::~Console() {
 }
 
 void Console::init(
-    VGA& vga,
     int tileW,
     int tileH,
     uint8_t defaultColor
 ) {
-    vga_ = &vga;
-
     // создаём и инициализируем TextTiles
     tiles_ = new TextTiles();
-    tiles_->init(vga, tileW, tileH);
+    tiles_->init(tileW, tileH);
 
     width_  = tiles_->width();
     height_ = tiles_->height();

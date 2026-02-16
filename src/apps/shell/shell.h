@@ -2,8 +2,8 @@
 #include "ISubsystem.h"
 #include "keyboard.h"
 #include "console.h"
-#include "VGA.h"
-#include "SDCard.h"
+#include "VGA/VGA.h"
+#include "sdcard.h"
 #include "shell_lua.h"
 
 #define SHELL_CMD_MAX     64
@@ -19,7 +19,7 @@ class AppManager;
 
 class Shell : public ISubsystem {
     public:
-        Shell(VGA& _vga, AppManager& app);
+        Shell(AppManager& app);
         ~Shell();
 
         bool init() override;
@@ -27,10 +27,8 @@ class Shell : public ISubsystem {
         void tick() override;
 
         Console& console() { return _console; }
-        SDCard& sdcard() { return _sd; }
         ShellLua& lua() { return _lua; }
         AppManager& app() { return _app; }
-        VGA& vga() { return _vga; }
         
         const char* cwd() const { return _cwd; }
         void setCwd(const char* path);
@@ -41,10 +39,7 @@ class Shell : public ISubsystem {
         AppManager& _app;
 
         /* ==== DEVICES ==== */
-        VGA& _vga;
         Console _console;
-        Keyboard _kb;
-        SDCard _sd;
         ShellLua _lua;
 
         /* ==== COMMAND LINE ==== */
