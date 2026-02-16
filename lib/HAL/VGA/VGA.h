@@ -7,7 +7,7 @@
 
 namespace VGA {
     // Инициализация и управление
-    bool init(const PinConfig cfgPins, const Mode mode, int bits);
+    bool init(const Mode mode, int bits);
     bool start();
     bool show();
 	void stop(); // Остановка железа

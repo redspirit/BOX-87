@@ -185,7 +185,6 @@ void Shell::onKeyEnter() {
         shellExecute(*this, parser);
     }
     
-
     memset(_cmd, 0, sizeof(_cmd));
     _len = 0;
     _cursorPos = 0;

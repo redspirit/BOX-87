@@ -38,7 +38,15 @@ namespace VGA {
         gpio_set_drive_capability((gpio_num_t)pin, (gpio_drive_cap_t)3);
     }
 
-    bool init(const PinConfig cfgPins, const Mode mode, int bits) {
+    bool init(const Mode mode, int bits) {
+
+        const PinConfig cfgPins(
+            4, 5, 6,    // R0, R1, R2
+            7, 9, 8,    // G0, G1, G2
+            11, 10, 14, // B0, B1, B1 --- тут B0 не используется
+            12, 13 // H, V
+        );
+
         _pins = cfgPins;
         _mode = mode;
         _bits = bits;
@@ -177,7 +185,7 @@ namespace VGA {
         stop();
         
         // Инициализируем заново с новыми параметрами
-        if (init(_pins, newMode, newBits)) {
+        if (init(newMode, newBits)) {
             return start();
         }
         return false;

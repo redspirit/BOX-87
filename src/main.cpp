@@ -6,15 +6,9 @@
 #include "apps/shell/shell.h"
 #include "LOG.h"
 
-const PinConfig vgaPins(
-    4, 5, 6,
-    7, 9, 8,
-    11, 10, 14,
-    12, 13 // H, V
-);
 
-Mode vgaMode = Mode::MODE_320x240x60;
-// Mode vgaMode = Mode::MODE_640x480x60;
+// Mode vgaMode = Mode::MODE_320x240x60;
+Mode vgaMode = Mode::MODE_640x480x60;
 
 AppManager app;
 ISubsystem* createShell() {
@@ -24,7 +18,7 @@ ISubsystem* createShell() {
 void setup() {
 	LOG.begin(115200);
 
-    if(!VGA::init(vgaPins, vgaMode, 8)) while(1) delay(1);
+    if(!VGA::init(vgaMode, 8)) while(1) delay(1);
     VGA::start();
     LOG.println("VGA started");
 
