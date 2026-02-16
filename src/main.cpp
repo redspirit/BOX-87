@@ -1,31 +1,46 @@
 #include <Arduino.h>
-#include "vga.h"
-#include "palette.h"
+#include "VGA/VGA.h"
+#include "keyboard.h"
+#include "sdcard.h"
+// #include "AppManager.h"
+// #include "shell/shell.h"
+#include "LOG.h"
+
+const PinConfig vgaPins(
+    4, 5, 6,
+    7, 9, 8,
+    11, 10, 14,
+    12, 13 // H, V
+);
+
+// Mode vgaMode = Mode::MODE_320x240x60;
+Mode vgaMode = Mode::MODE_640x480x60;
+
+// AppManager app;
+// ISubsystem* createShell() {
+//     return new Shell(vga, app);
+// }
 
 void setup() {
-    Serial.begin(115200);
-    Serial.println("Starting VGA via esp_lcd...");
+	LOG.begin(115200);
 
-    VGA::init();
+    if(!VGA::init(vgaPins, vgaMode, 8)) while(1) delay(1);
+    VGA::start();
+    LOG.println("VGA started");
 
-    // VGA::clear(rgb332(128, 0, 0));
-    // VGA::show();
+    KEYBOARD::init();
+    LOG.println("Keyboard init");
+
+    SDCARD::init();
+
+    VGA::fillRect8(20, 30, 100, 100, 128);
+    VGA::show();
+
+    // app.setDefault(createShell);
+    // app.startDefault();
 }
 
 void loop() {
-    VGA::clear(rgb332(128, 0, 0));
-
-    static int x = 0;
-    static int y = 100;
-    static int dirX = 2;
-    static int dirY = 2;
-    
-    VGA::fillRect(x, y, 50, 50, rgb332(255, 0, 0)); 
-    
-    x += dirX;
-    y += dirY;
-    if (x > VGA::width() - 50 || x < 0) dirX = -dirX;
-    if (y > VGA::height() - 50 || y < 0) dirY = -dirY;
-
-    VGA::show();
+    // app.tick();
+    KEYBOARD::poll();
 }

@@ -6,11 +6,8 @@
 #include <driver/gpio.h>
 #include <soc/lcd_cam_struct.h>
 #include <esp_private/gdma.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
-
-#include "esp_lcd_panel_ops.h"
-#include "esp_lcd_panel_rgb.h"
+// #include <freertos/FreeRTOS.h>
+// #include <freertos/semphr.h>
 
 #define HAL_FORCE_MODIFY_U32_REG_FIELD(base_reg, reg_field, field_val) { \
     uint32_t temp_val = base_reg.val; \

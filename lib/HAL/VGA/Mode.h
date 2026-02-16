@@ -8,10 +8,6 @@ class Mode
 	public:
 	static const Mode MODE_320x240x60;
 	static const Mode MODE_640x480x60;
-	static const Mode MODE_640x400x70;
-	static const Mode MODE_320x200x70;
-	static const Mode MODE_800x600x56;
-	static const Mode MODE_800x600x60;
 
 	public:
 	uint32_t hFront, hSync, hBack, hRes, hPol;
