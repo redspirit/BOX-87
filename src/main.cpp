@@ -7,7 +7,7 @@
 #include "LOG.h"
 
 
-// Mode vgaMode = Mode::MODE_320x240x60;
+//Mode vgaMode = Mode::MODE_320x240x60;
 Mode vgaMode = Mode::MODE_640x480x60;
 
 AppManager app;
