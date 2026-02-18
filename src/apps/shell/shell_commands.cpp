@@ -5,6 +5,7 @@
 // #include "player/player.h"
 #include "AppManager.h"
 #include "sdcard.h"
+#include "OTBFont.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -38,6 +39,7 @@ static bool cmd_play(Shell& shell, ShellParser& cmd);
 static bool cmd_pcm(Shell& shell, ShellParser& cmd);
 static bool cmd_color(Shell& shell, ShellParser& cmd);
 static bool cmd_sdspeed(Shell& shell, ShellParser& cmd);
+static bool cmd_ft(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -71,6 +73,7 @@ static const ShellCommand commands[] = {
     { "PCM", cmd_pcm, "Play pcm audio file" },
     { "COLOR", cmd_color, "Show specific color" },
     { "SDSPEED", cmd_sdspeed, "Test speed of file read from sd" },
+    { "FT", cmd_ft, "FT" },
 };
 
 static const int commandCount =
@@ -756,6 +759,7 @@ static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
 }
 
 static bool cmd_color(Shell& shell, ShellParser& cmd) {
+
     auto& con = shell.console();
 
     if (cmd.argc < 3) {
@@ -875,5 +879,43 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
     }
 
     con.useDefaultColor();
+    return true;
+}
+
+
+static bool cmd_ft(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    if (!sdCheck(shell)) {
+        return false;
+    }
+
+    char buffer[TYPE_MAX_SIZE + 1];
+
+    if(!SDCARD::open("/fonts/IBM_VGA_8x16.otb")) {
+        con.printLn("Failed to open font");
+        return false;
+    }
+
+    File* f = SDCARD::getFile();
+
+    OTBFont font;
+
+    if(!font.load(*f)){
+        con.printLn("Font load error");
+        return false;
+    }
+
+    // const uint8_t* zero = font.getBitmap('0');
+
+    char dump[1024];
+
+    if(!font.debugPrintGlyph('0', dump, sizeof(dump))) {
+        con.printLn("debugPrintGlyph error");
+        return false;
+    }
+
+    con.print(dump);
+
     return true;
 }
