@@ -6,6 +6,7 @@
 #include "AppManager.h"
 #include "sdcard.h"
 #include "OTBFont.h"
+#include <LittleFS.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -40,6 +41,7 @@ static bool cmd_pcm(Shell& shell, ShellParser& cmd);
 static bool cmd_color(Shell& shell, ShellParser& cmd);
 static bool cmd_sdspeed(Shell& shell, ShellParser& cmd);
 static bool cmd_glyph(Shell& shell, ShellParser& cmd);
+static bool cmd_fs(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -74,6 +76,7 @@ static const ShellCommand commands[] = {
     { "COLOR", cmd_color, "Show specific color" },
     { "SDSPEED", cmd_sdspeed, "Test speed of file read from sd" },
     { "GLYPH", cmd_glyph, "Show glyph bitmap for current font" },
+    { "FS", cmd_fs, "FS" },
 };
 
 static const int commandCount =
@@ -928,6 +931,59 @@ static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
     con.print(dump);
 
     SDCARD::close();
+
+    return true;
+}
+
+static bool cmd_fs(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    if (cmd.argc < 2) {
+        con.setColor(COLOR_RED);
+        con.printLn("Usage: FS <path>");
+        con.useDefaultColor();
+        return false;
+    }
+
+    const char* path  = cmd.argv[1];
+
+
+    if(!LittleFS.begin()) {
+        con.print("LittleFS mount failed");
+        return false;
+    }
+
+    File root = LittleFS.open(path);
+    if(!root) {
+        con.print("Failed to open directory ");
+        con.printLn(path);
+        return false;
+    }
+
+    if(!root.isDirectory()) {
+        con.printLn("Not a directory");
+        return false;
+    }
+
+    File file = root.openNextFile();
+
+    while(file) {
+        con.print(file.isDirectory() ? "[DIR]  " : "[FILE] ");
+        con.print(file.name());
+        con.print("  ");
+
+        if(!file.isDirectory()) {
+            con.print((int)file.size());
+            con.print(" bytes");
+        }
+
+        con.printLn();
+
+        file = root.openNextFile();
+    }
+
+    file.close();
+    LittleFS.end();
 
     return true;
 }
