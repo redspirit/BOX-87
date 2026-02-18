@@ -180,21 +180,25 @@ bool OTBFont::loadBitmaps(File& f,
         uint16_t glyphCount = endGlyph - startGlyph + 1;
 
         LOG.printf("EBDT glyphCount = %lu\n", glyphCount);
-        LOG.printf("EBDT offset = %lu\n", ebdtOffset);
-        LOG.printf("First glyphOffset = %lu\n", ebdtOffset + 4 + imageDataOffset);
-        LOG.printf("File size = %lu\n", f.size());
 
-        for(uint16_t g = 0; g < glyphCount; g++) {
+        for(uint16_t g = 0; g < glyphCount; g++)
+        {
+            uint32_t glyphOffset = ebdtOffset + imageDataOffset + g * imageSize;
+
+            f.seek(glyphOffset, SeekSet);
+
             uint8_t* buffer = (uint8_t*)malloc(imageSize);
             if(!buffer)
                 return false;
 
-            size_t readBytes = f.read(buffer, imageSize);
-
-            if(readBytes != imageSize)
+            if(f.read(buffer, imageSize) != imageSize) {
+                LOG.println("ERROR reading bitmap");
                 return false;
+            }
 
-            uint8_t ascii = startGlyph + g;
+            // тут может быть баг, мы предполагаем что индекс глифа в таком же порядке как ascii код, 
+            // но это может быть не так для разных файлов шрифтов
+            uint8_t ascii = startGlyph + g - 1; 
 
             _glyphs[ascii].width  = width;
             _glyphs[ascii].height = height;
@@ -216,10 +220,8 @@ bool OTBFont::loadBitmaps(File& f,
         for(uint16_t i = 0; i <= glyphCount; i++)
             offsets[i] = readU32(f);
 
-        for(uint16_t g = 0; g < glyphCount; g++)
-        {
-            uint32_t glyphOffset =
-                ebdtOffset + imageDataOffset + offsets[g];
+        for(uint16_t g = 0; g < glyphCount; g++) {
+            uint32_t glyphOffset = ebdtOffset + imageDataOffset + offsets[g];
 
             f.seek(glyphOffset, SeekSet);
 
@@ -256,7 +258,7 @@ bool OTBFont::loadBitmaps(File& f,
                 return false;
             }
 
-            uint8_t ascii = startGlyph + g;
+            uint8_t ascii = startGlyph + g - 1;
 
             _glyphs[ascii].width  = width;
             _glyphs[ascii].height = height;

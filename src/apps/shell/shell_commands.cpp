@@ -890,6 +890,8 @@ static bool cmd_ft(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
+    const char* ch  = cmd.argv[1];
+
     char buffer[TYPE_MAX_SIZE + 1];
 
     if(!SDCARD::open("/fonts/IBM_VGA_8x16.otb")) {
@@ -910,7 +912,7 @@ static bool cmd_ft(Shell& shell, ShellParser& cmd) {
 
     char dump[1024];
 
-    if(!font.debugPrintGlyph('0', dump, sizeof(dump))) {
+    if(!font.debugPrintGlyph(ch[0], dump, sizeof(dump))) {
         con.printLn("debugPrintGlyph error");
         return false;
     }
