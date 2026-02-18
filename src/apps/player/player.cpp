@@ -68,7 +68,7 @@ Player::~Player() {
 // -----------------------------------------------------------------------------
 
 bool Player::init() {
-    _tiles.init(8, 8);
+    _tiles.init();
     _tiles.setTransparent(false);
 
     if (!SDCARD::init()) {

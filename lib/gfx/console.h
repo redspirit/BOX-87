@@ -1,19 +1,14 @@
 #pragma once
 #include <stdint.h>
 #include "CharTile.h"
-
-class TextTiles;
+#include "TextTiles.h"
 
 class Console {
     public:
         Console();
         ~Console();
 
-        void init(
-            int tileW,
-            int tileH,
-            uint8_t defaultColor
-        );
+        void init(uint8_t defaultColor);
 
         // доступ к текстовому слою (если нужен снаружи)
         TextTiles& tiles();
@@ -49,7 +44,7 @@ class Console {
 
     private:
         // owned
-        TextTiles* tiles_ = nullptr;
+        TextTiles tiles_;
 
         int width_  = 0;
         int height_ = 0;

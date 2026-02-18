@@ -1,37 +1,27 @@
 #include "console.h"
-#include "TextTiles.h"
+
 #include "VGA/VGA.h"
 #include <stdlib.h>
 #include <string.h>
 #include <palette.h>
 
-Console::Console() {}
+Console::Console(): tiles_() {}
 
 Console::~Console() {
     if (buffer_) {
         free(buffer_);
         buffer_ = nullptr;
     }
-    if (tiles_) {
-        delete tiles_;
-        tiles_ = nullptr;
-    }
 }
 
-void Console::init(
-    int tileW,
-    int tileH,
-    uint8_t defaultColor
-) {
+void Console::init(uint8_t defaultColor) {
     // создаём и инициализируем TextTiles
-    tiles_ = new TextTiles();
-    tiles_->init(tileW, tileH);
+    tiles_.init();
 
-    width_  = tiles_->width();
-    height_ = tiles_->height();
+    width_  = tiles_.width();
+    height_ = tiles_.height();
 
-    buffer_ = (CharTile*)
-        malloc(width_ * height_ * sizeof(CharTile));
+    buffer_ = (CharTile*)malloc(width_ * height_ * sizeof(CharTile));
     memset(buffer_, 0, width_ * height_ * sizeof(CharTile));
 
     defaultColor_ = defaultColor;
@@ -41,7 +31,7 @@ void Console::init(
 }
 
 TextTiles& Console::tiles() {
-    return *tiles_;
+    return tiles_;
 }
 
 void Console::clear() {
@@ -81,7 +71,7 @@ void Console::scrollUp() {
     head_ = (head_ + 1) % height_;
     if (cy_ > 0) cy_--;
     _logoY -= 8;
-    tiles_->imageY(_logoY);
+    tiles_.imageY(_logoY);
 }
 
 void Console::newLine() {
@@ -199,34 +189,32 @@ void Console::show() {
 }
 
 void Console::insertLogo(const uint8_t* data, uint16_t w, uint16_t h, int16_t x, int16_t y) {
-    tiles_->setImage(data, w, h, x, y);
+    tiles_.setImage(data, w, h, x, y);
     _logoY = y;
 }
 
 void Console::show(int y1, int y2) {
-    if (!tiles_) return;
-
     if (y1 < 0) y1 = 0;
     if (y2 >= height_) y2 = height_ - 1;
 
     for (int y = y1; y <= y2; y++) {
         int src = (head_ + y) % height_;
         for (int x = 0; x < width_; x++) {
-            tiles_->drawTile(x, y, cell(x, src));
+            tiles_.drawTile(x, y, cell(x, src));
         }
     }
 
     if (cursorEnabled_ && cursorPhase_) {
-        tiles_->drawTileForeground(
+        tiles_.drawTileForeground(
             cx_, cy_,
             { (uint8_t)cursorChar_, currentColor_ }
         );
-        tiles_->foregroundVisible(true);
+        tiles_.foregroundVisible(true);
     } else {
-        tiles_->foregroundVisible(false);
+        tiles_.foregroundVisible(false);
     }
 
-    tiles_->render();
+    tiles_.render();
 }
 
 void Console::cursorSetup(char cursorChar, float cursorBlinkSpeed) {

@@ -1,9 +1,10 @@
 #include "TextTiles.h"
 #include "VGA/VGA.h"
-#include "font8x8.h"
 #include "palette.h"
 #include <string.h>
 #include <stdlib.h>
+#include <LittleFS.h>
+#include <LOG.h>
 
 TextTiles::~TextTiles() {
     if (tilemap_) {
@@ -12,13 +13,42 @@ TextTiles::~TextTiles() {
     }
 }
 
-void TextTiles::init(
-    int tileW,
-    int tileH
-) {
+void TextTiles::init() {
+    if (!setFontFile("/fonts/ToshibaSat_8x16.otb", false)) {
+        LOG.println("[TextTiles] init failed");
+    }
+}
 
-    tileW_ = tileW;
-    tileH_ = tileH;
+bool TextTiles::setFontFile(const char* path, bool isSD) {
+    if (isSD) {
+        // load from SD Card
+
+
+    } else {
+        // load from littleFS
+
+        if(!LittleFS.begin()) {
+            LOG.println("[TextTiles] LittleFS mount failed");
+            return false;
+        }
+
+        File f = LittleFS.open(path);
+        if(!f) {
+            LOG.println("[TextTiles] Failed to open font file");
+            return false;
+        }
+
+        if(!_font.load(f)){
+            LOG.println("[TextTiles] Font load error");
+            return false;
+        }
+
+        f.close();
+        LittleFS.end();
+    }
+
+    tileW_ = _font.getWidth();;
+    tileH_ = _font.getHeight();
 
     gridW_ = VGA::width() / tileW_; // округляется вниз до целого автоматически
     gridH_ = VGA::height() / tileH_;
@@ -26,10 +56,17 @@ void TextTiles::init(
     // переаллоцируем, если нужно
     size_t count = gridW_ * gridH_;
 
+    if (tilemap_) {
+        free(tilemap_);
+        tilemap_ = nullptr;
+    }
+
     tilemap_ = (CharTile*)malloc(count * sizeof(CharTile));
     memset(tilemap_, 0, count * sizeof(CharTile));
 
     fgVisible_ = false;
+
+    return true;
 }
 
 void TextTiles::clear() {
@@ -183,7 +220,8 @@ void TextTiles::render() {
 }
 
 void TextTiles::renderTile(int px, int py, const CharTile& t) {
-    const uint8_t* glyph = font8x8::get(t.ch);
+    // const uint8_t* glyph = font8x8::get(t.ch);
+    const uint8_t* glyph =_font.getBitmap(t.ch);
 
     for (int y = 0; y < tileH_; y++) {
         uint8_t row = glyph[y];

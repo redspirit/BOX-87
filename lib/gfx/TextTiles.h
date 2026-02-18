@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include "CharTile.h"
+#include "OTBFont.h"
 
 struct ImageLayer {
     const uint8_t* data;
@@ -18,12 +19,11 @@ public:
     TextTiles() = default;
     ~TextTiles();
 
-    void init(
-        int tileW = 8,
-        int tileH = 8
-    );
+    void init();
 
     void clear();
+
+    bool setFontFile(const char* path, bool isSD);
 
     void drawTile(int x, int y, CharTile t);
     void drawTileForeground(int x, int y, CharTile t);
@@ -47,6 +47,7 @@ public:
     void setTransparent(bool enabled);
 
 private:
+    OTBFont _font;
     int gridW_ = 0;
     int gridH_ = 0;
     int tileW_ = 0;

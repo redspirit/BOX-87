@@ -18,7 +18,7 @@ Shell::~Shell() {
 
 bool Shell::init() {
     paletteInit();
-    _console.init(8, 8, 255); // default color white
+    _console.init(255); // default color white
     _console.setCursorVisible(true);
 
     memset(_cmd, 0, sizeof(_cmd));
