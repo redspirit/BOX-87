@@ -39,7 +39,7 @@ static bool cmd_play(Shell& shell, ShellParser& cmd);
 static bool cmd_pcm(Shell& shell, ShellParser& cmd);
 static bool cmd_color(Shell& shell, ShellParser& cmd);
 static bool cmd_sdspeed(Shell& shell, ShellParser& cmd);
-static bool cmd_ft(Shell& shell, ShellParser& cmd);
+static bool cmd_glyph(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -73,7 +73,7 @@ static const ShellCommand commands[] = {
     { "PCM", cmd_pcm, "Play pcm audio file" },
     { "COLOR", cmd_color, "Show specific color" },
     { "SDSPEED", cmd_sdspeed, "Test speed of file read from sd" },
-    { "FT", cmd_ft, "FT" },
+    { "GLYPH", cmd_glyph, "Show glyph bitmap for current font" },
 };
 
 static const int commandCount =
@@ -882,9 +882,15 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-
-static bool cmd_ft(Shell& shell, ShellParser& cmd) {
+static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
     auto& con = shell.console();
+
+    if (cmd.argc < 2) {
+        con.setColor(COLOR_RED);
+        con.printLn("Usage: GLYPH <char>");
+        con.useDefaultColor();
+        return false;
+    }
 
     if (!sdCheck(shell)) {
         return false;
@@ -904,20 +910,24 @@ static bool cmd_ft(Shell& shell, ShellParser& cmd) {
     OTBFont font;
 
     if(!font.load(*f)){
+        con.setColor(COLOR_RED);
         con.printLn("Font load error");
+        con.useDefaultColor();
         return false;
     }
-
-    // const uint8_t* zero = font.getBitmap('0');
 
     char dump[1024];
 
     if(!font.debugPrintGlyph(ch[0], dump, sizeof(dump))) {
+        con.setColor(COLOR_RED);
         con.printLn("debugPrintGlyph error");
+        con.useDefaultColor();        
         return false;
     }
 
     con.print(dump);
+
+    SDCARD::close();
 
     return true;
 }

@@ -1,38 +1,50 @@
 #pragma once
 #include <stdint.h>
-#include <stdio.h>
 #include <FS.h>
 
-class OTBFont {
-    public:
-        OTBFont();
-        ~OTBFont();
+class OTBFont
+{
+public:
+    OTBFont();
+    ~OTBFont();
 
-        bool load(File& f);
+    bool load(File& f);
+    void unload();
 
-        const uint8_t* getBitmap(uint8_t ascii) const;
-        uint8_t getWidth() const;
-        uint8_t getHeight() const;
+    const uint8_t* getBitmap(uint8_t ascii) const;
 
-        // buffer должен быть >= (height * (width+1) + 32)
-        bool debugPrintGlyph(uint8_t ascii,
-                            char* buffer,
-                            size_t bufferSize) const;
+    uint8_t getWidth()  const { return _fontWidth; }
+    uint8_t getHeight() const { return _fontHeight; }
 
-    private:
-        struct Glyph {
-            uint8_t width;
-            uint8_t height;
-            uint16_t stride;
-            uint8_t* bitmap;
-        };
+    bool debugPrintGlyph(uint8_t ascii,
+                         char* buffer,
+                         size_t bufferSize) const;
 
-        Glyph _glyphs[256];
+private:
+    bool parseSFNT(File& f,
+                   uint32_t& eblcOffset,
+                   uint32_t& ebdtOffset);
 
-        uint8_t _fontWidth;
-        uint8_t _fontHeight;
+    bool parseEBLC(File& f,
+                   uint32_t eblcOffset,
+                   uint32_t& subTableOffset,
+                   uint16_t& firstGlyph,
+                   uint16_t& lastGlyph);
 
-        bool parseSFNT(File& f, uint32_t& eblcOffset, uint32_t& ebdtOffset);
-        bool parseEBLC(File& f, uint32_t eblcOffset, uint32_t& subTableOffset, uint16_t& startGlyph, uint16_t& endGlyph);
-        bool loadBitmaps(File& f, uint32_t ebdtOffset, uint32_t subTableOffset, uint16_t startGlyph, uint16_t endGlyph);
+    bool loadBitmaps(File& f,
+                     uint32_t ebdtOffset,
+                     uint32_t subTableOffset,
+                     uint16_t firstGlyph,
+                     uint16_t lastGlyph);
+
+private:
+    uint8_t*  _bitmapBlock;
+    uint32_t  _bitmapBlockSize;
+
+    uint16_t  _firstGlyph;
+    uint16_t  _lastGlyph;
+
+    uint16_t  _glyphSize;     // размер одного glyph в байтах
+    uint8_t   _fontWidth;
+    uint8_t   _fontHeight;
 };

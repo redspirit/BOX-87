@@ -1,9 +1,13 @@
 #include "OTBFont.h"
 #include <stdlib.h>
 #include <string.h>
-#include <LOG.h>
+#include <stdio.h>
 
 #define TAG(a,b,c,d) ((a<<24)|(b<<16)|(c<<8)|(d))
+
+// --------------------
+// Helpers
+// --------------------
 
 static uint8_t readU8(File& f) {
     uint8_t b;
@@ -23,62 +27,92 @@ static uint32_t readU32(File& f) {
     return (b[0]<<24)|(b[1]<<16)|(b[2]<<8)|b[3];
 }
 
-OTBFont::OTBFont() {
-    memset(_glyphs,0,sizeof(_glyphs));
+// --------------------
+// Constructor / Destructor
+// --------------------
+
+OTBFont::OTBFont() :
+    _bitmapBlock(nullptr),
+    _bitmapBlockSize(0),
+    _firstGlyph(0),
+    _lastGlyph(0),
+    _glyphSize(0),
+    _fontWidth(0),
+    _fontHeight(0)
+{
 }
 
 OTBFont::~OTBFont() {
-    for(int i=0;i<256;i++){
-        if(_glyphs[i].bitmap)
-            free(_glyphs[i].bitmap);
-    }
+    unload();
 }
 
+void OTBFont::unload() {
+    if(_bitmapBlock)
+    {
+        free(_bitmapBlock);
+        _bitmapBlock = nullptr;
+    }
+
+    _bitmapBlockSize = 0;
+    _glyphSize = 0;
+}
+
+// --------------------
+// Public API
+// --------------------
+
 bool OTBFont::load(File& f) {
-    if(!f)
+    unload();
+
+    if(!f) {
         return false;
+    }
 
     uint32_t eblcOffset = 0;
     uint32_t ebdtOffset = 0;
 
-    if(!parseSFNT(f, eblcOffset, ebdtOffset))
+    if(!parseSFNT(f, eblcOffset, ebdtOffset)) {
         return false;
-
-    LOG.println("parseSFNT - OK");
+    }
 
     uint32_t subTableOffset = 0;
-    uint16_t startGlyph = 0;
-    uint16_t endGlyph = 0;
+    uint16_t firstGlyph = 0;
+    uint16_t lastGlyph  = 0;
 
-    if(!parseEBLC(f,
-                  eblcOffset,
-                  subTableOffset,
-                  startGlyph,
-                  endGlyph))
+    if(!parseEBLC(f, eblcOffset, subTableOffset, firstGlyph, lastGlyph)) {
         return false;
+    }
 
-    LOG.println("parseEBLC - OK");
-
-    if(!loadBitmaps(f,
-                    ebdtOffset,
-                    subTableOffset,
-                    startGlyph,
-                    endGlyph))
+    if(!loadBitmaps(f, ebdtOffset, subTableOffset, firstGlyph, lastGlyph)) {
         return false;
-
-    LOG.println("loadBitmaps - OK");
+    }
 
     return true;
 }
+
+const uint8_t* OTBFont::getBitmap(uint8_t ascii) const {
+    if(!_bitmapBlock)
+        return nullptr;
+
+    if(ascii < _firstGlyph || ascii > _lastGlyph)
+        return nullptr;
+
+    uint32_t index = ascii - _firstGlyph + 1;
+    return _bitmapBlock + index * _glyphSize;
+}
+
+// --------------------
+// Parsing
+// --------------------
 
 bool OTBFont::parseSFNT(File& f, uint32_t& eblcOffset, uint32_t& ebdtOffset) {
     f.seek(0, SeekSet);
 
     readU32(f); // sfnt version
     uint16_t numTables = readU16(f);
-    f.seek(f.position() + 6, SeekSet); // skip searchRange etc
+    f.seek(f.position() + 6, SeekSet);
 
-    for(int i=0;i<numTables;i++){
+    for(uint16_t i=0;i<numTables;i++) {
         uint32_t tag = readU32(f);
         readU32(f); // checksum
         uint32_t offset = readU32(f);
@@ -86,6 +120,7 @@ bool OTBFont::parseSFNT(File& f, uint32_t& eblcOffset, uint32_t& ebdtOffset) {
 
         if(tag == TAG('E','B','L','C'))
             eblcOffset = offset;
+
         if(tag == TAG('E','B','D','T'))
             ebdtOffset = offset;
     }
@@ -93,232 +128,120 @@ bool OTBFont::parseSFNT(File& f, uint32_t& eblcOffset, uint32_t& ebdtOffset) {
     return (eblcOffset && ebdtOffset);
 }
 
-bool OTBFont::parseEBLC(File& f,
-                        uint32_t eblcOffset,
-                        uint32_t& subTableOffset,
-                        uint16_t& startGlyph,
-                        uint16_t& endGlyph)
-{
+bool OTBFont::parseEBLC(File& f, uint32_t eblcOffset, uint32_t& subTableOffset, uint16_t& firstGlyph, uint16_t& lastGlyph) {
     f.seek(eblcOffset, SeekSet);
 
     readU32(f); // version
     uint32_t numSizes = readU32(f);
-
-    if(numSizes == 0)
+    if(numSizes == 0) {
         return false;
+    }
 
     uint32_t indexSubTableArrayOffset = readU32(f);
     readU32(f); // indexTablesSize
     readU32(f); // numberOfIndexSubTables
     readU32(f); // colorRef
 
-    readU16(f); // startGlyph
-    readU16(f); // endGlyph
+    readU16(f); // startGlyphIndex (ignored)
+    readU16(f); // endGlyphIndex   (ignored)
 
-    readU8(f); // ppemX
-    readU8(f); // ppemY
-    readU8(f); // bitDepth
-    readU8(f); // flags
+    f.seek(f.position() + 28, SeekSet); // skip metrics
 
-    // skip 24 bytes SbitLineMetrics
-    f.seek(f.position() + 24, SeekSet);
-
-    // --- Читаем IndexSubTableArray ---
     uint32_t arrayPos = eblcOffset + indexSubTableArrayOffset;
     f.seek(arrayPos, SeekSet);
 
-    startGlyph = readU16(f); // firstGlyphIndex
-    endGlyph  = readU16(f); // lastGlyphIndex
-    uint32_t additionalOffsetToIndexSubtable = readU32(f);
+    firstGlyph = readU16(f);
+    lastGlyph  = readU16(f);
+    uint32_t additionalOffset = readU32(f);
 
-    subTableOffset = arrayPos + additionalOffsetToIndexSubtable;
+    subTableOffset = arrayPos + additionalOffset;
 
     return true;
 }
 
-bool OTBFont::loadBitmaps(File& f,
-                          uint32_t ebdtOffset,
-                          uint32_t subTableOffset,
-                          uint16_t startGlyph,
-                          uint16_t endGlyph)
-{
+// --------------------
+// Bitmap loading (Format 2 only)
+// --------------------
 
+bool OTBFont::loadBitmaps(File& f, uint32_t ebdtOffset, uint32_t subTableOffset, uint16_t firstGlyph, uint16_t lastGlyph) {
     f.seek(subTableOffset, SeekSet);
 
     uint16_t indexFormat = readU16(f);
     uint16_t imageFormat = readU16(f);
     uint32_t imageDataOffset = readU32(f);
 
-    LOG.printf("indexFormat = %u\n", indexFormat);
-    LOG.printf("imageFormat = %u\n", imageFormat);
-    LOG.printf("imageDataOffset = %lu\n", imageDataOffset);
-
-    if(indexFormat == 2) {
-        uint32_t imageSize = readU32(f);
-
-        // читаем BigGlyphMetrics (общие для всех)
-        uint8_t height = readU8(f);
-        uint8_t width  = readU8(f);
-
-        LOG.println("loadBitmaps - height/width/imageSize"); 
-        LOG.println(height); 
-        LOG.println(width);
-        LOG.println(imageSize);
-
-        int8_t horiBearingX = (int8_t)readU8(f);
-        int8_t horiBearingY = (int8_t)readU8(f);
-        readU8(f); // horiAdvance
-        readU8(f); // vertBearingX
-        readU8(f); // vertBearingY
-        readU8(f); // vertAdvance
-
-        if(width > 8) {
-            LOG.println("ERROR FONT LOAD - font width large than 8"); 
-            return false;
-        }
-            
-        uint16_t glyphCount = endGlyph - startGlyph + 1;
-
-        LOG.printf("EBDT glyphCount = %lu\n", glyphCount);
-
-        for(uint16_t g = 0; g < glyphCount; g++)
-        {
-            uint32_t glyphOffset = ebdtOffset + imageDataOffset + g * imageSize;
-
-            f.seek(glyphOffset, SeekSet);
-
-            uint8_t* buffer = (uint8_t*)malloc(imageSize);
-            if(!buffer)
-                return false;
-
-            if(f.read(buffer, imageSize) != imageSize) {
-                LOG.println("ERROR reading bitmap");
-                return false;
-            }
-
-            // тут может быть баг, мы предполагаем что индекс глифа в таком же порядке как ascii код, 
-            // но это может быть не так для разных файлов шрифтов
-            uint8_t ascii = startGlyph + g - 1; 
-
-            _glyphs[ascii].width  = width;
-            _glyphs[ascii].height = height;
-            _glyphs[ascii].stride = (width + 7) >> 3;
-            _glyphs[ascii].bitmap = buffer;
-
-            _fontWidth  = width;
-            _fontHeight = height;
-        }
-
-        return true;
-    } else if (indexFormat == 1) {
-        uint16_t glyphCount = endGlyph - startGlyph + 1;
-
-        // читаем offsets[]
-        uint32_t* offsets = (uint32_t*)malloc((glyphCount + 1) * sizeof(uint32_t));
-        if(!offsets) return false;
-
-        for(uint16_t i = 0; i <= glyphCount; i++)
-            offsets[i] = readU32(f);
-
-        for(uint16_t g = 0; g < glyphCount; g++) {
-            uint32_t glyphOffset = ebdtOffset + imageDataOffset + offsets[g];
-
-            f.seek(glyphOffset, SeekSet);
-
-            uint8_t height = readU8(f);
-            uint8_t width  = readU8(f);
-
-            LOG.println("loadBitmaps - height/width"); 
-            LOG.println(height); 
-            LOG.println(width);
-
-            if(width > 8)
-            {
-                free(offsets);
-                return false;
-            }
-
-            readU8(f); // bearingX
-            readU8(f); // bearingY
-            readU8(f); // advance
-
-            uint16_t bytesPerRow = (width + 7) >> 3;
-            uint16_t bitmapSize = bytesPerRow * height;
-
-            uint8_t* buffer = (uint8_t*)malloc(bitmapSize);
-            if(!buffer)
-            {
-                free(offsets);
-                return false;
-            }
-
-            if(f.read(buffer, bitmapSize) != bitmapSize)
-            {
-                free(offsets);
-                return false;
-            }
-
-            uint8_t ascii = startGlyph + g - 1;
-
-            _glyphs[ascii].width  = width;
-            _glyphs[ascii].height = height;
-            _glyphs[ascii].stride = bytesPerRow;
-            _glyphs[ascii].bitmap = buffer;
-
-            _fontWidth  = width;
-            _fontHeight = height;
-        }
-
-        free(offsets);
-        return true;
-
-    } else {
-        LOG.print("Unsupported indexFormat - ");
-        LOG.println(indexFormat);
+    if(indexFormat != 2) {
         return false;
     }
 
+    uint32_t imageSize = readU32(f);
+
+    _fontHeight = readU8(f);
+    _fontWidth  = readU8(f);
+
+    if(_fontWidth > 8) {
+        return false;
+    }
+
+    // skip remaining BigGlyphMetrics
+    f.seek(f.position() + 6, SeekSet);
+
+    _firstGlyph = firstGlyph;
+    _lastGlyph  = lastGlyph;
+    _glyphSize  = imageSize;
+
+    uint16_t glyphCount = lastGlyph - firstGlyph + 1;
+
+    uint32_t totalSize = glyphCount * imageSize;
+
+    _bitmapBlock = (uint8_t*)malloc(totalSize);
+    if(!_bitmapBlock) {
+        return false;
+    }
+
+    _bitmapBlockSize = totalSize;
+
+    uint32_t bitmapStart = ebdtOffset + imageDataOffset;
+
+    f.seek(bitmapStart, SeekSet);
+
+    if(f.read(_bitmapBlock, totalSize) != totalSize) {
+        return false;
+    }
+
+    return true;
 }
 
-const uint8_t* OTBFont::getBitmap(uint8_t ascii) const
-{
-    return _glyphs[ascii].bitmap;
-}
-
-uint8_t OTBFont::getWidth() const {
-    return _fontWidth;
-}
-
-uint8_t OTBFont::getHeight() const {
-    return _fontHeight;
-}
+// --------------------
+// Debug
+// --------------------
 
 bool OTBFont::debugPrintGlyph(uint8_t ascii, char* buffer, size_t bufferSize) const {
-    const Glyph& g = _glyphs[ascii];
-
-    if(!g.bitmap || !buffer)
+    const uint8_t* bmp = getBitmap(ascii);
+    if(!bmp || !buffer) {
         return false;
+    }
 
     size_t pos = 0;
 
-    int written = snprintf(buffer + pos,
-                           bufferSize - pos,
+    int written = snprintf(buffer,
+                           bufferSize,
                            "Glyph %d (%c): %dx%d\n",
                            ascii,
                            (ascii >= 32 && ascii < 127) ? ascii : '?',
-                           g.width,
-                           g.height);
+                           _fontWidth,
+                           _fontHeight);
 
-    if(written <= 0) return false;
-    pos += written;
+    if(written <= 0)
+        return false;
 
-    for(uint8_t y = 0; y < g.height; y++)
-    {
-        uint8_t row = g.bitmap[y * g.stride];
+    pos = written;
 
-        for(uint8_t x = 0; x < g.width; x++)
-        {
-            if(pos >= bufferSize - 2)
+    for(uint8_t y = 0; y < _fontHeight; y++) {
+        uint8_t row = bmp[y];
+
+        for(uint8_t x = 0; x < _fontWidth; x++) {
+            if(pos >= bufferSize-2)
                 return false;
 
             buffer[pos++] =
@@ -328,8 +251,6 @@ bool OTBFont::debugPrintGlyph(uint8_t ascii, char* buffer, size_t bufferSize) co
         buffer[pos++] = '\n';
     }
 
-    if(pos < bufferSize)
-        buffer[pos] = 0;
-
+    buffer[pos] = 0;
     return true;
 }
