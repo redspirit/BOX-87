@@ -159,9 +159,12 @@ void TextTiles::drawText() {
     }
 }
 
-void TextTiles::drawImage() {
+void TextTiles::drawImage(int scale) {
     if (!_image.enabled || !_image.data)
         return;
+
+    if (scale <= 0)
+        scale = 1;
 
     const int screenW = VGA::width();
     const int screenH = VGA::height();
@@ -169,32 +172,34 @@ void TextTiles::drawImage() {
     const int bytesPerRow = _image.width / 4;
 
     for (int y = 0; y < _image.height; y++) {
-        int sy = _image.y + y;
-        if (sy < 0 || sy >= screenH)
-            continue;
 
-        uint8_t* dst = VGA::getLinePtr8(sy);
+        // каждая строка исходника масштабируется по вертикали
+        for (int sy_repeat = 0; sy_repeat < scale; sy_repeat++) {
+            int sy = _image.y + y * scale + sy_repeat;
+            if (sy < 0 || sy >= screenH) continue;
+            uint8_t* dst = VGA::getLinePtr8(sy);
+            const uint8_t* src = _image.data + y * bytesPerRow;
 
-        const uint8_t* src =
-            _image.data + y * bytesPerRow;
+            for (int bx = 0; bx < bytesPerRow; bx++) {
+                uint8_t b = src[bx];
+                int baseX = _image.x + (bx * 4) * scale;
 
-        for (int bx = 0; bx < bytesPerRow; bx++) {
-            uint8_t b = src[bx];
+                // распаковка 4 пикселей (2bpp)
+                for (int i = 0; i < 4; i++) {
+                    uint8_t colorIdx = (b >> (6 - i * 2)) & 0x03;
+                    if (colorIdx == 1) // прозрачный
+                        continue;
 
-            int px = _image.x + bx * 4;
-            if (px >= screenW || px + 3 < 0)
-                continue;
+                    uint8_t finalColor = getColorByPalette(colorIdx + 96);
+                    int startX = baseX + i * scale;
 
-            // распаковка 4 пикселей
-            for (int i = 0; i < 4; i++) {
-                int sx = px + i;
-                if (sx < 0 || sx >= screenW)
-                    continue;
-
-                uint8_t colorIdx = (b >> (6 - i * 2)) & 0x03;
-                if (colorIdx == 1) continue;
-
-                dst[sx] = getColorByPalette(colorIdx + 96); // 96 смещение в палитре для цветов логотипа
+                    // горизонтальный масштаб
+                    for (int sx_repeat = 0; sx_repeat < scale; sx_repeat++) {
+                        int sx = startX + sx_repeat;
+                        if (sx < 0 || sx >= screenW) continue;
+                        dst[sx] = finalColor;
+                    }
+                }
             }
         }
     }
@@ -215,13 +220,18 @@ void TextTiles::render() {
         return;
 
     drawText();
-    drawImage();
+    drawImage(2);
     drawCursor();
 }
 
 void TextTiles::renderTile(int px, int py, const CharTile& t) {
-    // const uint8_t* glyph = font8x8::get(t.ch);
     const uint8_t* glyph =_font.getBitmap(t.ch);
+
+    if (!glyph) {
+        // fallback символ
+        glyph = _font.getBitmap('?');
+        if (!glyph) return; 
+    }
 
     for (int y = 0; y < tileH_; y++) {
         uint8_t row = glyph[y];

@@ -70,7 +70,7 @@ void Console::clearLine(int row) {
 void Console::scrollUp() {
     head_ = (head_ + 1) % height_;
     if (cy_ > 0) cy_--;
-    _logoY -= 8;
+    _logoY -= height_;
     tiles_.imageY(_logoY);
 }
 

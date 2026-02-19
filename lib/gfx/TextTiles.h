@@ -70,6 +70,6 @@ private:
 
     void renderTile(int px, int py, const CharTile& t);
     void drawText();
-    void drawImage();
+    void drawImage(int scale);
     void drawCursor();
 };

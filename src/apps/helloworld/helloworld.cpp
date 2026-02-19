@@ -12,6 +12,7 @@ HelloWorld::~HelloWorld() {
 bool HelloWorld::init() {
     paletteInit();
     _tiles.init();
+    _tiles.print("ZERO", 0, 0, 255);
     _tiles.print("Hello World!", 1, 1, COLOR_GREEN);
     _tiles.print("Exit after 5 sec...", 1, 3, COLOR_RED);
 
