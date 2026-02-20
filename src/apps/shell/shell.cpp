@@ -38,17 +38,18 @@ bool Shell::init() {
     _console.printLn();
     _console.printLn(" SRAM 388K PSRAM 8191K");
     _console.print(" VGA: "); 
-    _console.print(VGA::width()); _console.print("x"); _console.printLn(VGA::height());
+    _console.printInt(VGA::width()); _console.print("x"); 
+    _console.printInt(VGA::height()); _console.printLn();
     _console.printLn(" KEYBOARD: Ready");
     _console.print(" SD: ");
     if (SDCARD::init()) {
         uint64_t total = SDCARD::totalBytes();
         uint64_t free  = SDCARD::freeBytes();
-        _console.print(int(free / (1024 * 1024)));
+        _console.printInt(int(free / (1024 * 1024)));
         _console.print("/");
-        _console.print(int(total / (1024 * 1024)));
+        _console.printInt(int(total / (1024 * 1024)));
         _console.print(" MB (");
-        _console.print(int((free * 100ULL + total / 2) / total));
+        _console.printInt(int((free * 100ULL + total / 2) / total));
         _console.printLn("%)");
         SDCARD::close();
     } else {

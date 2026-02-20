@@ -19,11 +19,9 @@ class Console {
         void useDefaultColor();
 
         void print(const char* text);
-        void print(int value);
-
-        void printLn();
         void printLn(const char* text);
-        void printLn(int value);
+        void printInt(int value);
+        void printLn();
 
         void printRawChar(uint16_t c, uint16_t repeat = 1);
 

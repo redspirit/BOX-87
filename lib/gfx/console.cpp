@@ -137,7 +137,7 @@ void Console::print(const char* text) {
     }
 }
 
-void Console::print(int value) {
+void Console::printInt(int value) {
     char buf[12];
     itoa(value, buf, 10);
     print(buf);
@@ -149,11 +149,6 @@ void Console::printLn() {
 
 void Console::printLn(const char* text) {
     if (text) print(text);
-    newLine();
-}
-
-void Console::printLn(int value) {
-    print(value);
     newLine();
 }
 

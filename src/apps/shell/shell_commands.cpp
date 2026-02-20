@@ -89,10 +89,10 @@ static char hexDigit(uint8_t v) {
 void printHexU16(Console& con, uint16_t value) {
     const char hexChars[] = "0123456789ABCDEF";
     con.print("U+");
-    con.print(hexChars[(value >> 12) & 0xF]);
-    con.print(hexChars[(value >> 8) & 0xF]);
-    con.print(hexChars[(value >> 4) & 0xF]);
-    con.print(hexChars[value & 0xF]);
+    con.printRawChar(hexChars[(value >> 12) & 0xF]);
+    con.printRawChar(hexChars[(value >> 8) & 0xF]);
+    con.printRawChar(hexChars[(value >> 4) & 0xF]);
+    con.printRawChar(hexChars[value & 0xF]);
     con.print(" ");
 }
 
@@ -273,15 +273,15 @@ static bool cmd_palette(Shell& shell, ShellParser& cmd) {
         // Заголовок строки: 0xNN
         con.setColor(COLOR_YELLOW);
         con.print("0x");
-        con.print(hexDigit((base >> 4) & 0xF));
-        con.print(hexDigit(base & 0xF));
+        con.printRawChar(hexDigit((base >> 4) & 0xF));
+        con.printRawChar(hexDigit(base & 0xF));
         con.print(" ");
 
         // 16 цветов
         for (int i = 0; i < 16; i++) {
             uint8_t color = base + i;
             con.setColor(color);
-            con.print((char)219); // █
+            con.print("█");
         }
 
         con.printLn();
@@ -599,9 +599,9 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
             uint32_t speedKB = (intervalBytes / 1024) * 1000 / interval;
             uint32_t percent = (totalRead * 100ULL) / fileSize;
 
-            con.print((int)percent); con.print("%  ");
-            con.print((int)totalRead); con.print(" bytes ");
-            con.print((int)speedKB); con.printLn(" KB/s");
+            con.printInt((int)percent); con.print("%  ");
+            con.printInt((int)totalRead); con.print(" bytes ");
+            con.printInt((int)speedKB); con.printLn(" KB/s");
 
             lastReport = now;
             lastReadBytes = totalRead;
@@ -621,9 +621,9 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
 
     con.printLn();
     con.printLn("=== SD SPEED SUMMARY ===");
-    con.print("File size: "); con.printLn(fileSize);
-    con.print("Time: "); con.print((int)totalTime); con.printLn(" ms");
-    con.print("Average speed: "); con.print((int)avgKB); con.printLn(" KB/s");    
+    con.print("File size: "); con.printInt(fileSize); con.printLn();
+    con.print("Time: "); con.printInt((int)totalTime); con.printLn(" ms");
+    con.print("Average speed: "); con.printInt((int)avgKB); con.printLn(" KB/s");    
 
     return true;
 }
@@ -643,19 +643,19 @@ static bool cmd_mem(Shell& shell, ShellParser& cmd) {
 
     con.printLn("INTERNAL RAM");
     con.print("  TOTAL: ");
-    con.print((int)(ram_total >> 10));
+    con.printInt((int)(ram_total >> 10));
     con.printLn(" KB");
 
     con.print("  FREE : ");
-    con.print((int)(ram_free >> 10));
+    con.printInt((int)(ram_free >> 10));
     con.printLn(" KB");
 
     con.print("  USED : ");
-    con.print((int)((ram_total - ram_free) >> 10));
+    con.printInt((int)((ram_total - ram_free) >> 10));
     con.printLn(" KB");
 
     con.print("  MIN  : ");
-    con.print((int)(ram_min >> 10));
+    con.printInt((int)(ram_min >> 10));
     con.printLn(" KB");
 
     if (psram_total > 0) {
@@ -663,19 +663,19 @@ static bool cmd_mem(Shell& shell, ShellParser& cmd) {
         con.printLn("PSRAM");
 
         con.print("  TOTAL: ");
-        con.print((int)(psram_total >> 10));
+        con.printInt((int)(psram_total >> 10));
         con.printLn(" KB");
 
         con.print("  FREE : ");
-        con.print((int)(psram_free >> 10));
+        con.printInt((int)(psram_free >> 10));
         con.printLn(" KB");
 
         con.print("  USED : ");
-        con.print((int)((psram_total - psram_free) >> 10));
+        con.printInt((int)((psram_total - psram_free) >> 10));
         con.printLn(" KB");
 
         con.print("  MIN  : ");
-        con.print((int)(psram_min >> 10));
+        con.printInt((int)(psram_min >> 10));
         con.printLn(" KB");
     } else {
         con.printLn("");
@@ -865,7 +865,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
             con.setColorRaw(cv << 6);
             con.printRawChar((char)219, 20);
             con.useDefaultColor();
-            con.print(cv);
+            con.printInt(cv);
             con.printLn();
         }        
         
@@ -874,7 +874,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
             con.setColorRaw(cv << 3);
             con.printRawChar((char)219, 20);
             con.useDefaultColor();
-            con.print(cv);
+            con.printInt(cv);
             con.printLn();
         }
 
@@ -883,7 +883,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
             con.setColorRaw(cv);
             con.printRawChar((char)219, 20);
             con.useDefaultColor();
-            con.print(cv);
+            con.printInt(cv);
             con.printLn();
         }
 
@@ -1031,7 +1031,7 @@ static bool cmd_fs(Shell& shell, ShellParser& cmd) {
         con.print("  ");
 
         if(!file.isDirectory()) {
-            con.print((int)file.size());
+            con.printInt((int)file.size());
             con.print(" bytes");
         }
 
