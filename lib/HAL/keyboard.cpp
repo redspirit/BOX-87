@@ -246,19 +246,16 @@ namespace KEYBOARD {
         static bool release = false;
         static bool extended = false;
 
-        if (sc == 0xFA) {
-            ps2AckCount_++;
-            return;
-        }
+        if (sc == 0xFA) { ps2AckCount_++; return; }
+        if (sc == 0xE0) { extended = true; return; }
+        if (sc == 0xF0) { release = true; return; }
 
-        if (sc == 0xE0) {
-            extended = true;
-            return;
-        }
-
-        if (sc == 0xF0) {
-            release = true;
-            return;
+        // Игнорируем "фейковые" скан-коды шифта, которые приходят внутри 
+        // последовательности Print Screen (E0 12...)
+        if (extended && (sc == 0x12 || sc == 0x59)) {
+            release = false;   // Сбрасываем флаг отпускания, если он был (для E0 F0 12)
+            extended = false;  // Сбрасываем флаг расширенного кода
+            return; 
         }
 
         uint16_t key = sc | (extended ? 0x100 : 0);

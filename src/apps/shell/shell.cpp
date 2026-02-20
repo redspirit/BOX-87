@@ -96,6 +96,9 @@ void Shell::update(float dt) {
     if (KEYBOARD::isJustPressed(KEYBOARD::RIGHT))     onKeyRight();
     if (KEYBOARD::isJustPressed(KEYBOARD::UP))        onKeyUp();
     if (KEYBOARD::isJustPressed(KEYBOARD::DOWN))      onKeyDown();
+    if (KEYBOARD::isJustPressed(KEYBOARD::PRINT_SCREEN)) {
+        LOG.println("PRINT SCREEN PRESSED");
+    }
 
     _console.show();
     VGA::show();

@@ -15,7 +15,7 @@ namespace KEYBOARD {
         char shifted;
     };
 
-    // Скан-коды (те же, что в вашем классе)
+    // Скан-коды
     enum Key : uint16_t {
         ESC = 0x76,
         F1 = 0x05, F2 = 0x06, F3 = 0x04, F4 = 0x0C,
@@ -52,6 +52,8 @@ namespace KEYBOARD {
         B = 0x32, N = 0x31, M = 0x3A,
 
         RIGHT = 0x174, LEFT = 0x16B, UP = 0x175, DOWN = 0x172,
+        
+        PRINT_SCREEN = 0x17C,
     };
 
     void init();
