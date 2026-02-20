@@ -32,13 +32,13 @@ bool Shell::init() {
     _console.printLn();
     _console.printLn();
     _console.printLn();
-    // _console.printLn();
     _console.setColor(COLOR_GREEN);
     _console.printLn(" BOX-87 SYSTEM SHELL ROM v0.1");
     _console.printLn(" (c) 2026 RedSpirit");
     _console.printLn();
     _console.printLn(" SRAM 388K PSRAM 8191K");
-    _console.print(" VGA: "); _console.print(VGA::width()); _console.print("x"); _console.printLn(VGA::height());
+    _console.print(" VGA: "); 
+    _console.print(VGA::width()); _console.print("x"); _console.printLn(VGA::height());
     _console.printLn(" KEYBOARD: Ready");
     _console.print(" SD: ");
     if (SDCARD::init()) {
@@ -56,14 +56,14 @@ bool Shell::init() {
     }
     _console.printLn();
     _console.print(" ");
-    _console.setColor(2); _console.print((char)219);
-    _console.setColor(3); _console.print((char)219);
-    _console.setColor(4); _console.print((char)219);
-    _console.setColor(5); _console.print((char)219);
-    _console.setColor(6); _console.print((char)219);
-    _console.setColor(7); _console.print((char)219);
-    _console.setColor(8); _console.print((char)219);
-    _console.setColor(9); _console.print((char)219);
+    _console.setColor(2); _console.print("█");
+    _console.setColor(3); _console.print("█");
+    _console.setColor(4); _console.print("█");
+    _console.setColor(5); _console.print("█");
+    _console.setColor(6); _console.print("█");
+    _console.setColor(7); _console.print("█");
+    _console.setColor(8); _console.print("█");
+    _console.setColor(9); _console.print("█");
     _console.printLn();
     _console.printLn();
     _console.setColor(COLOR_GREEN);
@@ -151,7 +151,7 @@ void Shell::onChar(char c) {
 
     if (_cursorPos == _len) {
         // курсор был в конце
-        _console.print(c);
+        _console.printRawChar(c);
     } else {
         // курсор в середине — полная перерисовка
         redrawInputLine();

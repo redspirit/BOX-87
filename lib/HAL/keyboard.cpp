@@ -178,18 +178,18 @@ namespace KEYBOARD {
         keyMap_[NUM_9] = {'9','('};
         keyMap_[NUM_0] = {'0',')'};
 
-        keyMap_[SPACE] = {' ',' '};
-        keyMap_[MINUS] = {'-','_'};
-        keyMap_[EQUAL] = {'=','+'};
-        keyMap_[LBRACKET] = {'[','{'};
-        keyMap_[RBRACKET] = {']','}'};
-        keyMap_[BACKSLASH] = {'\\','|'};
-        keyMap_[SEMI] = {';',':'};
-        keyMap_[QUOTE] = {'\'','"'};
-        keyMap_[COMMA] = {',','<'};
-        keyMap_[DOT] = {'.','>'};
-        keyMap_[SLASH] = {'/','?'};
-        keyMap_[GRAVE] = {'`','~'};
+        keyMap_[SPACE] =        {' ',' '};
+        keyMap_[MINUS] =        {'-','_'};
+        keyMap_[EQUAL] =        {'=','+'};
+        keyMap_[LBRACKET] =     {'[','{'};
+        keyMap_[RBRACKET] =     {']','}'};
+        keyMap_[BACKSLASH] =    {'\\','|'};
+        keyMap_[SEMI] =         {';',':'};
+        keyMap_[QUOTE] =        {'\'','"'};
+        keyMap_[COMMA] =        {',','<'};
+        keyMap_[DOT] =          {'.','>'};
+        keyMap_[SLASH] =        {'/','?'};
+        keyMap_[GRAVE] =        {'`','~'};
     }
 
     void init() {

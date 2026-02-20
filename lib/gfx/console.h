@@ -10,7 +10,6 @@ class Console {
 
         void init(uint8_t defaultColor);
 
-        // доступ к текстовому слою (если нужен снаружи)
         TextTiles& tiles();
 
         void clear();
@@ -20,7 +19,6 @@ class Console {
         void useDefaultColor();
 
         void print(const char* text);
-        void print(char c);
         void print(int value);
 
         void printLn();

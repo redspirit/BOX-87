@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <palette.h>
+#include "UTF8.h"
 
 Console::Console(): tiles_() {}
 
@@ -105,26 +106,35 @@ void Console::print(const char* text) {
     if (count_ == 0)
         newLine();
 
-    for (; *text; ++text) {
-        if (*text == '\n') {
-            newLine();
+    const char* ptr = text;
+    while (ptr && *ptr) {
+        uint16_t code;
+        ptr = UTF8::decode(ptr, code);
+
+        // Обработка переносов строк
+        if (code == '\r') {
+            cx_ = 0;
             continue;
         }
 
-        if (cx_ >= width_)
+        if (code == '\n') {
+            newLine(); // Переход на новую строку
+            continue;
+        }
+
+        // Автоматический перенос, если текст вышел за границы ширины
+        if (cx_ >= width_) {
             newLine();
+        }
 
         int row = (head_ + cy_) % height_;
         auto& t = cell(cx_, row);
-        t.ch = *text;
+        
+        t.ch = code;
         t.color = currentColor_;
+        
         cx_++;
     }
-}
-
-void Console::print(char c) {
-    char buf[2] = { c, 0 };
-    print(buf);
 }
 
 void Console::print(int value) {
@@ -138,8 +148,7 @@ void Console::printLn() {
 }
 
 void Console::printLn(const char* text) {
-    if (text)
-        print(text);
+    if (text) print(text);
     newLine();
 }
 

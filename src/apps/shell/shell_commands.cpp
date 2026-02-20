@@ -197,14 +197,13 @@ static bool cmd_help(Shell& shell, ShellParser& cmd) {
 
     // печатаем список
     for (int i = 0; i < commandCount; ++i) {
-
         con.setColor(COLOR_YELLOW);
         con.print(commands[i].name);
         con.setColor(COLOR_WHITE);
 
         int pad = maxLen - strlen(commands[i].name) + 2;
         for (int s = 0; s < pad; ++s)
-            con.print(' ');
+            con.printRawChar(' ');
 
         con.printLn(commands[i].help);
     }
