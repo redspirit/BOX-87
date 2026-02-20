@@ -31,6 +31,7 @@ public:
 
     void print(const char* text, int x, int y, uint8_t color);
     void render();
+    void renderTileBitmap(int px, int py, const uint8_t* glyph);
 
     int width()  const { return gridW_; }
     int height() const { return gridH_; }
@@ -45,6 +46,7 @@ public:
     void hideImage();
     void imageY(int16_t y);
     void setTransparent(bool enabled);
+    OTBFont& getFont();
 
 private:
     OTBFont _font;

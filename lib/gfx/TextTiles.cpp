@@ -15,6 +15,7 @@ TextTiles::~TextTiles() {
 
 void TextTiles::init() {
     if (!setFontFile("/fonts/ToshibaSat_8x16.otb", false)) {
+    // if (!setFontFile("/fonts/IBM_EGA_8x8.otb", false)) {
         LOG.println("[TextTiles] init failed");
     }
 }
@@ -225,11 +226,11 @@ void TextTiles::render() {
 }
 
 void TextTiles::renderTile(int px, int py, const CharTile& t) {
-    const uint8_t* glyph =_font.getBitmap(t.ch);
+    const uint8_t* glyph =_font.getBitmapUnicode(t.ch);
 
     if (!glyph) {
         // fallback символ
-        glyph = _font.getBitmap('?');
+        glyph = _font.getBitmapUnicode('?');
         if (!glyph) return; 
     }
 
@@ -250,6 +251,31 @@ void TextTiles::renderTile(int px, int py, const CharTile& t) {
     }
 }
 
+void TextTiles::renderTileBitmap(int px, int py, const uint8_t* glyph) {
+    if (!glyph) {
+        return; 
+    }
+
+    for (int y = 0; y < tileH_; y++) {
+        uint8_t row = glyph[y];
+        uint8_t* dst = VGA::getLinePtr8(py + y) + px;
+
+        for (int x = 0; x < tileW_; x++) {
+            bool bit = row & (1 << (7 - x));
+
+            if (bit) {
+                dst[x] = 255;
+            } else {
+                dst[x] = 0;
+            }
+        }
+    }
+}
+
 void TextTiles::setTransparent(bool enabled) {
     transparent_ = enabled;
+}
+
+OTBFont& TextTiles::getFont() {
+    return _font;
 }

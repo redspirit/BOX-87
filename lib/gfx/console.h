@@ -27,7 +27,7 @@ class Console {
         void printLn(const char* text);
         void printLn(int value);
 
-        void printRawChar(char c, uint16_t repeat = 1);
+        void printRawChar(uint16_t c, uint16_t repeat = 1);
 
         void clearCharAt(int x, int y);
 

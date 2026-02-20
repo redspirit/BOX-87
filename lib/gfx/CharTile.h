@@ -2,6 +2,6 @@
 #include <stdint.h>
 
 struct CharTile {
-    uint8_t ch;
+    uint16_t ch;
     uint8_t color;
 };

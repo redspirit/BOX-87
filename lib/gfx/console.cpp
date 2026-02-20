@@ -88,7 +88,7 @@ void Console::newLine() {
     }
 }
 
-void Console::printRawChar(char c, uint16_t repeat) {
+void Console::printRawChar(uint16_t c, uint16_t repeat) {
     while (repeat--) {
         if (cx_ >= width_)
             newLine();

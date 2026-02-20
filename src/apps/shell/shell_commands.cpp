@@ -86,6 +86,16 @@ static char hexDigit(uint8_t v) {
     return (v < 10) ? ('0' + v) : ('A' + (v - 10));
 }
 
+void printHexU16(Console& con, uint16_t value) {
+    const char hexChars[] = "0123456789ABCDEF";
+    con.print("U+");
+    con.print(hexChars[(value >> 12) & 0xF]);
+    con.print(hexChars[(value >> 8) & 0xF]);
+    con.print(hexChars[(value >> 4) & 0xF]);
+    con.print(hexChars[value & 0xF]);
+    con.print(" ");
+}
+
 static void dirCallback(void* user, const char* name, bool isDir) {
     Shell* shell = static_cast<Shell*>(user);
     auto& con = shell->console();
@@ -215,26 +225,39 @@ static bool cmd_reboot(Shell& shell, ShellParser& cmd) {
 
 static bool cmd_font(Shell& shell, ShellParser& cmd) {
     auto& con = shell.console();
+    auto& font = con.tiles().getFont();
 
     con.setColor(COLOR_CYAN);
-    con.printLn("FONT TABLE (0x00-0xFF)");
-    con.printRawChar((char)205, 22);
-    con.printLn();
+    con.printLn("FULL FONT TABLE");
+    con.printLn("==============================");
 
-    for (int base = 0; base < 256; base += 16) {
-        con.setColor(COLOR_YELLOW);
-        con.print("0x");
-        con.print(hexDigit((base >> 4) & 0xF));
-        con.print(hexDigit(base & 0xF));
-        con.print(" ");
+    // Переменная для отслеживания позиции в строке
+    int count = 0; 
 
-        // 16 символов
-        con.setColor(COLOR_WHITE);
-        for (int i = 0; i < 16; i++) {
-            con.printRawChar((char)(base + i));
+    font.forEachUnicode([&](uint16_t code) {
+        // Если это начало строки (каждые 16 символов)
+        if (count % 32 == 0) {
+            if (count > 0) con.printLn(); // Перенос предыдущей строки
+            
+            con.setColor(COLOR_YELLOW);
+            printHexU16(con, code); // Выводим "U+XXXX "
+            con.setColor(COLOR_WHITE);
         }
-        con.printLn();
-    }
+
+        con.printRawChar(code);
+        count++;
+    });
+
+    con.printLn();
+    con.printLn();
+    con.setColor(COLOR_CYAN);
+    con.print("Total symbols found: ");
+    
+    // Преобразование итогового числа в строку (простой вариант)
+    char totalStr[10];
+    itoa(count, totalStr, 10);
+    con.printLn(totalStr);
+    
     con.useDefaultColor();
     return true;
 }
@@ -885,8 +908,41 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
+
+static uint16_t utf8ToUnicode(const char*& s)
+{
+    uint8_t c = (uint8_t)*s++;
+
+    // 1 byte (ASCII)
+    if(c < 0x80)
+        return c;
+
+    // 2 bytes
+    if((c & 0xE0) == 0xC0)
+    {
+        uint16_t result =
+            ((c & 0x1F) << 6) |
+            (*s++ & 0x3F);
+        return result;
+    }
+
+    // 3 bytes
+    if((c & 0xF0) == 0xE0)
+    {
+        uint16_t result =
+            ((c & 0x0F) << 12) |
+            ((*s++ & 0x3F) << 6) |
+            (*s++ & 0x3F);
+        return result;
+    }
+
+    // unsupported
+    return 0xFFFD;
+}
+
 static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
     auto& con = shell.console();
+    auto& tiles = shell.console().tiles();
 
     if (cmd.argc < 2) {
         con.setColor(COLOR_RED);
@@ -900,10 +956,12 @@ static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
     }
 
     const char* ch  = cmd.argv[1];
+    int value = atoi(ch);
 
     char buffer[TYPE_MAX_SIZE + 1];
 
-    if(!SDCARD::open("/fonts/IBM_VGA_8x16.otb")) {
+    if(!SDCARD::open("/fonts/ToshibaSat_8x16.otb")) {
+    // if(!SDCARD::open("/fonts/IBM_EGA_8x8.otb")) {
         con.printLn("Failed to open font");
         return false;
     }
@@ -921,10 +979,11 @@ static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
 
     char dump[1024];
 
-    if(!font.debugPrintGlyph(ch[0], dump, sizeof(dump))) {
-        con.setColor(COLOR_RED);
-        con.printLn("debugPrintGlyph error");
-        con.useDefaultColor();        
+    char16_t code = u'Я';
+    const char* str = "Я";
+
+    if(!font.debugPrintGlyph(value, dump, sizeof(dump))) {
+        con.printLn("debugPrintGlyph error");     
         return false;
     }
 
