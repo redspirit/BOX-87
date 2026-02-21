@@ -19,7 +19,7 @@ namespace SDCARD {
     void unlock();
 
     // Работа с "текущим" открытым файлом
-    bool open(const char* path);
+    bool open(const char* path, const char* mode = FILE_READ);
     size_t read(void* dst, size_t len);
     bool available();
     void close();

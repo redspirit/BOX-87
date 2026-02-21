@@ -6,6 +6,8 @@
 #include <apps/shell/logo.h>
 #include <string.h>
 #include <stdio.h>
+#include "BMPScreen.h"
+#include "sdcard.h"
 
 Shell::Shell(AppManager& app)
     : _app(app),
@@ -96,11 +98,10 @@ void Shell::update(float dt) {
     if (KEYBOARD::isJustPressed(KEYBOARD::RIGHT))     onKeyRight();
     if (KEYBOARD::isJustPressed(KEYBOARD::UP))        onKeyUp();
     if (KEYBOARD::isJustPressed(KEYBOARD::DOWN))      onKeyDown();
-    if (KEYBOARD::isJustPressed(KEYBOARD::PRINT_SCREEN)) {
-        LOG.println("PRINT SCREEN PRESSED");
-    }
 
     _console.show();
+    if (KEYBOARD::isJustPressed(KEYBOARD::PRINT_SCREEN)) onPrintScreen(); 
+
     VGA::show();
     KEYBOARD::beginFrame();
 }
@@ -261,6 +262,27 @@ void Shell::onKeyDown() {
 
     int idx = (_historyHead - 1 - _historyPos + HISTORY_SIZE) % HISTORY_SIZE;
     loadHistoryLine(_history[idx]);
+}
+
+void Shell::onPrintScreen() {
+    uint32_t seconds = millis() / 1000;
+
+    char filename[32];
+    snprintf(filename, sizeof(filename), "/screen_%08lu.bmp", (unsigned long)seconds);
+
+    SDCARD::open(filename, "w");
+
+    File* f = SDCARD::getFile();
+    if (!f) {
+        LOG.println("NO FILE");
+        _console.print("File not open"); 
+        return;
+    }
+
+    BMPScreen::makeScreenShot(*f);
+    SDCARD::close();
+    _console.print("Screenshot: ");
+    _console.printLn(filename);
 }
 
 void Shell::resolvePath(const char* input, char* out) {

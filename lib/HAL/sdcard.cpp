@@ -47,11 +47,11 @@ namespace SDCARD {
         return true;
     }
 
-    bool open(const char* path) {
+    bool open(const char* path, const char* mode) {
         if (!_inited) return false;
         close(); 
         lock();
-        _currentFile = SD_MMC.open(path, FILE_READ);
+        _currentFile = SD_MMC.open(path, mode);
         if (!_currentFile || _currentFile.isDirectory()) {
             _currentFile = File();
             unlock();

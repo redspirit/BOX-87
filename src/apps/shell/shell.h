@@ -72,6 +72,7 @@ class Shell : public ISubsystem {
         void onKeyRight();
         void onKeyUp();
         void onKeyDown();
+        void onPrintScreen();
 
         /* ==== HISTORY ==== */
         void historyAdd(const char* line);
