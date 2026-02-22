@@ -27,5 +27,6 @@ class Viewer : public ISubsystem {
 
         uint32_t _frameTimeMs = 16;
         bool open(const char* path);
+        bool hasExtension(const char* path, const char* ext);
 
 };

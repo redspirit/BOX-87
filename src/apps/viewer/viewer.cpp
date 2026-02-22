@@ -7,6 +7,7 @@
 #include "VGA/VGA.h"
 #include "keyboard.h"
 #include <BMPReader.h>
+#include <PNGReader.h>
 
 Viewer::Viewer(const ShellParser& args, const char* fullPath)
     : _tiles(),
@@ -55,11 +56,31 @@ void Viewer::tick() {
 
 }
 
+bool Viewer::hasExtension(const char* path, const char* ext) {
+    const char* dot = strrchr(path, '.');
+    if (!dot)
+        return false;
+
+    dot++; // пропустить точку
+
+    while (*dot && *ext)
+    {
+        if (tolower((unsigned char)*dot) !=
+            tolower((unsigned char)*ext))
+            return false;
+
+        dot++;
+        ext++;
+    }
+
+    return (*dot == '\0' && *ext == '\0');
+}
+
 bool Viewer::open(const char* path) {
+    int screenW = VGA::width();
+    int screenH = VGA::height();
 
-    LOG.println("Do open");
-
-    if (!SDCARD::open("/images/test_large.bmp", "r")) {
+    if (!SDCARD::open(path, "r")) {
         return false;
     }
 
@@ -68,48 +89,93 @@ bool Viewer::open(const char* path) {
     }
 
     File* f = SDCARD::getFile();
-
     int w, h;
+    uint8_t* img;
 
-    BMPReader reader;
+    if (hasExtension(path, "bmp")) {
 
-    if (!reader.readHeader(*f, w, h)) {
-        LOG.println("BMP read header failed");
+        BMPReader reader;
+
+        if (!reader.readHeader(*f, w, h)) {
+            LOG.println("bmp read header failed");
+            SDCARD::close();
+            return false;
+        }
+
+        if (w > screenW || h > screenH) {
+            _tiles.print("Image too big", 1, 1, COLOR_RED);
+            SDCARD::close();
+            return false;
+        }
+
+        size_t bufferSize = w * h;
+        img = (uint8_t*)heap_caps_malloc(bufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+
+        if (!img) {
+            LOG.println("bmp buffer not created");
+            SDCARD::close();
+            return false;
+        }
+
+        if (!reader.read(*f, img, bufferSize)) {
+            LOG.println("bmp read failed");
+            heap_caps_free(img);
+            img = nullptr;
+            SDCARD::close();
+        }
+
+    } else if (hasExtension(path, "png")) {
+
+        PNGReader reader;
+
+        if (!reader.readHeader(*f, w, h)) {
+            LOG.println("png read header failed");
+            SDCARD::close();
+            return false;
+        }
+
+        if (w > screenW || h > screenH) {
+            _tiles.print("Image too big", 1, 1, COLOR_RED);
+            SDCARD::close();
+            return false;
+        }
+
+        size_t bufferSize = w * h;
+        img = (uint8_t*)heap_caps_malloc(bufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+
+        if (!img) {
+            LOG.println("img buffer not created");
+            SDCARD::close();
+            return false;
+        }
+
+        if (!reader.read(*f, img, bufferSize)) {
+            LOG.println("png read failed");
+            heap_caps_free(img);
+            img = nullptr;
+            SDCARD::close();
+        }
+
+    } else {
+        _tiles.print("Unsupported format", 1, 1, COLOR_RED);
         return false;
     }
 
-    size_t bufferSize = w * h;
-    uint8_t* img = (uint8_t*)heap_caps_malloc(bufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-
-    if (!img) {
-        LOG.println("img buffer not created");
-        return false;
-    }
-    
-    LOG.println("Read begin");
-    if (!reader.read(*f, img, bufferSize)) {
-        LOG.println("BMP read failed");
-        heap_caps_free(img);
-        img = nullptr;
-    }
-
-
-    int screenW = VGA::width();
-    int screenH = VGA::height();
     int offsetX = (screenW - w) / 2;
     int offsetY = (screenH - h) / 2;
 
+    // выравнимание по центру экрана
     for (int y = 0; y < h; y++) {
         uint8_t* dstLine = VGA::getLinePtr8(y + offsetY) + offsetX;
         uint8_t* srcLine = img + y * w;
         memcpy(dstLine, srcLine, w);
     }
 
-    LOG.println("Do show");
     VGA::show();
     SDCARD::close();
 
-    // тут тоже буффер img надо почистить
+    heap_caps_free(img);
+    img = nullptr;
 
     return true;
 }
