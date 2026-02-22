@@ -42,8 +42,11 @@ class Shell : public ISubsystem {
         Console _console;
         ShellLua _lua;
 
+        bool _isEngLayout;
+
         /* ==== COMMAND LINE ==== */
         char _cmd[SHELL_CMD_MAX];
+        // uint16_t _cmd[SHELL_CMD_MAX]; // todo надо сделать для юникода то ломаются функции работы со строками
         int  _len;
         int  _cursorPos;
 
@@ -65,7 +68,7 @@ class Shell : public ISubsystem {
         void redrawInputLine();
 
         /* ==== INPUT HANDLERS ==== */
-        void onChar(char c);
+        void onChar(uint16_t c);
         void onKeyBack();
         void onKeyEnter();
         void onKeyLeft();

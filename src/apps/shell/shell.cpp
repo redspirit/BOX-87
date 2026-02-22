@@ -19,6 +19,7 @@ Shell::~Shell() {
 }
 
 bool Shell::init() {
+    _isEngLayout = true; // по умолчанию раскладка английская
     paletteInit();
     _console.init(255); // default color white
     _console.setCursorVisible(true);
@@ -87,8 +88,12 @@ void Shell::update(float dt) {
     VGA::clear(0);
     _console.cursorUpdate(dt);
     
-    char c;
-    while (KEYBOARD::getChar(c)) {
+    // Логика переключения раскладки Alt + Shift
+    bool alt = KEYBOARD::isPressed(KEYBOARD::ALT_LEFT) || KEYBOARD::isPressed(KEYBOARD::ALT_RIGHT);
+    bool shift = KEYBOARD::isPressed(KEYBOARD::SHIFT_LEFT) || KEYBOARD::isPressed(KEYBOARD::SHIFT_RIGHT);
+
+    uint16_t c;
+    while (KEYBOARD::getChar(_isEngLayout, c)) {
         onChar(c);
     }
 
@@ -98,6 +103,15 @@ void Shell::update(float dt) {
     if (KEYBOARD::isJustPressed(KEYBOARD::RIGHT))     onKeyRight();
     if (KEYBOARD::isJustPressed(KEYBOARD::UP))        onKeyUp();
     if (KEYBOARD::isJustPressed(KEYBOARD::DOWN))      onKeyDown();
+
+    // чекаем переключение языка на Alt + Shift
+    if ((alt && (KEYBOARD::isJustPressed(KEYBOARD::SHIFT_LEFT) || KEYBOARD::isJustPressed(KEYBOARD::SHIFT_RIGHT))) ||
+        (shift && (KEYBOARD::isJustPressed(KEYBOARD::ALT_LEFT) || KEYBOARD::isJustPressed(KEYBOARD::ALT_RIGHT)))) 
+    {
+        _isEngLayout = !_isEngLayout;
+        LOG.print("Layout changed to: ");
+        LOG.println(_isEngLayout ? "EN" : "RU");
+    }   
 
     _console.show();
     if (KEYBOARD::isJustPressed(KEYBOARD::PRINT_SCREEN)) onPrintScreen(); 
@@ -140,7 +154,7 @@ void Shell::setCwd(const char* path) {
     _cwd[sizeof(_cwd) - 1] = 0;
 }
 
-void Shell::onChar(char c) {
+void Shell::onChar(uint16_t c) {
     if (_len >= SHELL_CMD_MAX - 1)
         return;
 
@@ -270,14 +284,12 @@ void Shell::onPrintScreen() {
     char filename[32];
     snprintf(filename, sizeof(filename), "/screen_%08lu.bmp", (unsigned long)seconds);
 
-    SDCARD::open(filename, "w");
-
-    File* f = SDCARD::getFile();
-    if (!f) {
-        LOG.println("NO FILE");
-        _console.print("File not open"); 
+    if(!SDCARD::open(filename, "w")) {
+        _console.printLn("File not opened for writing"); 
         return;
     }
+
+    File* f = SDCARD::getFile();
 
     BMPScreen::makeScreenShot(*f);
     SDCARD::close();

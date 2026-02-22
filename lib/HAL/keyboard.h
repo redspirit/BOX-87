@@ -13,6 +13,8 @@ namespace KEYBOARD {
     struct KeyChar {
         char normal;
         char shifted;
+        uint16_t ru_normal;
+        uint16_t ru_shifted;
     };
 
     // Скан-коды
@@ -52,7 +54,7 @@ namespace KEYBOARD {
         B = 0x32, N = 0x31, M = 0x3A,
 
         RIGHT = 0x174, LEFT = 0x16B, UP = 0x175, DOWN = 0x172,
-        
+
         PRINT_SCREEN = 0x17C,
     };
 
@@ -61,7 +63,7 @@ namespace KEYBOARD {
     void beginFrame();
 
     bool readKey(KeyEvent& ev);
-    bool getChar(char& out);
+    bool getChar(bool isEng, uint16_t& out);
 
     bool isPressed(uint16_t key);
     bool isJustPressed(uint16_t key);
@@ -69,8 +71,4 @@ namespace KEYBOARD {
 
     uint32_t getPs2AckCount();
     uint32_t getPs2WriteErrors();
-    
-    // Блокировка для многопоточности
-    void lock();
-    void unlock();
 }

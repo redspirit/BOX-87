@@ -21,7 +21,7 @@ namespace KEYBOARD {
 
         uint8_t keyBits_[64]{};
         uint8_t prevKeyBits_[64]{};
-        KeyChar keyMap_[512]{};
+        KeyChar keyMap_[128]{};
 
         bool capsLock_ = false;
         volatile bool ledsDirty_ = false;
@@ -140,56 +140,57 @@ namespace KEYBOARD {
     }
 
     void initKeyMap() {
-        keyMap_[A] = {'a','A'};
-        keyMap_[B] = {'b','B'};
-        keyMap_[C] = {'c','C'};
-        keyMap_[D] = {'d','D'};
-        keyMap_[E] = {'e','E'};
-        keyMap_[F] = {'f','F'};
-        keyMap_[G] = {'g','G'};
-        keyMap_[H] = {'h','H'};
-        keyMap_[I] = {'i','I'};
-        keyMap_[J] = {'j','J'};
-        keyMap_[K] = {'k','K'};
-        keyMap_[L] = {'l','L'};
-        keyMap_[M] = {'m','M'};
-        keyMap_[N] = {'n','N'};
-        keyMap_[O] = {'o','O'};
-        keyMap_[P] = {'p','P'};
-        keyMap_[Q] = {'q','Q'};
-        keyMap_[R] = {'r','R'};
-        keyMap_[S] = {'s','S'};
-        keyMap_[T] = {'t','T'};
-        keyMap_[U] = {'u','U'};
-        keyMap_[V] = {'v','V'};
-        keyMap_[W] = {'w','W'};
-        keyMap_[X] = {'x','X'};
-        keyMap_[Y] = {'y','Y'};
-        keyMap_[Z] = {'z','Z'};
+        // Формат: {normal, shifted, ru_normal, ru_shifted}
+        keyMap_[A] = {'a','A',u'ф',u'Ф'};
+        keyMap_[B] = {'b','B',u'и',u'И'};
+        keyMap_[C] = {'c','C',u'с',u'С'};
+        keyMap_[D] = {'d','D',u'в',u'В'};
+        keyMap_[E] = {'e','E',u'у',u'У'};
+        keyMap_[F] = {'f','F',u'а',u'А'};
+        keyMap_[G] = {'g','G',u'п',u'П'};
+        keyMap_[H] = {'h','H',u'р',u'Р'};
+        keyMap_[I] = {'i','I',u'ш',u'Ш'};
+        keyMap_[J] = {'j','J',u'о',u'О'};
+        keyMap_[K] = {'k','K',u'л',u'Л'};
+        keyMap_[L] = {'l','L',u'д',u'Д'};
+        keyMap_[M] = {'m','M',u'ь',u'Ь'};
+        keyMap_[N] = {'n','N',u'т',u'Т'};
+        keyMap_[O] = {'o','O',u'щ',u'Щ'};
+        keyMap_[P] = {'p','P',u'з',u'З'};
+        keyMap_[Q] = {'q','Q',u'й', u'Й'};
+        keyMap_[R] = {'r','R',u'к',u'К'};
+        keyMap_[S] = {'s','S',u'ы',u'Ы'};
+        keyMap_[T] = {'t','T',u'е',u'Е'};
+        keyMap_[U] = {'u','U',u'г',u'Г'};
+        keyMap_[V] = {'v','V',u'м',u'М'};
+        keyMap_[W] = {'w','W',u'ц',u'Ц'};
+        keyMap_[X] = {'x','X',u'ч',u'Ч'};
+        keyMap_[Y] = {'y','Y',u'н',u'Н'};
+        keyMap_[Z] = {'z','Z',u'я',u'Я'};
 
-        keyMap_[NUM_1] = {'1','!'};
-        keyMap_[NUM_2] = {'2','@'};
-        keyMap_[NUM_3] = {'3','#'};
-        keyMap_[NUM_4] = {'4','$'};
-        keyMap_[NUM_5] = {'5','%'};
-        keyMap_[NUM_6] = {'6','^'};
-        keyMap_[NUM_7] = {'7','&'};
-        keyMap_[NUM_8] = {'8','*'};
-        keyMap_[NUM_9] = {'9','('};
-        keyMap_[NUM_0] = {'0',')'};
+        keyMap_[NUM_1] = {'1','!',u'1',u'!'};
+        keyMap_[NUM_2] = {'2','@',u'2',u'"'};
+        keyMap_[NUM_3] = {'3','#',u'3',u'№'};
+        keyMap_[NUM_4] = {'4','$',u'4',u';'};
+        keyMap_[NUM_5] = {'5','%',u'5',u'%'};
+        keyMap_[NUM_6] = {'6','^',u'6',u':'};
+        keyMap_[NUM_7] = {'7','&',u'7',u'?'};
+        keyMap_[NUM_8] = {'8','*',u'8',u'*'};
+        keyMap_[NUM_9] = {'9','(',u'9',u'('};
+        keyMap_[NUM_0] = {'0',')',u'0',u')'};
 
-        keyMap_[SPACE] =        {' ',' '};
-        keyMap_[MINUS] =        {'-','_'};
-        keyMap_[EQUAL] =        {'=','+'};
-        keyMap_[LBRACKET] =     {'[','{'};
-        keyMap_[RBRACKET] =     {']','}'};
-        keyMap_[BACKSLASH] =    {'\\','|'};
-        keyMap_[SEMI] =         {';',':'};
-        keyMap_[QUOTE] =        {'\'','"'};
-        keyMap_[COMMA] =        {',','<'};
-        keyMap_[DOT] =          {'.','>'};
-        keyMap_[SLASH] =        {'/','?'};
-        keyMap_[GRAVE] =        {'`','~'};
+        keyMap_[SPACE] =        {' ',' ',u' ',u' '};
+        keyMap_[MINUS] =        {'-','_',u'-',u'_'};
+        keyMap_[EQUAL] =        {'=','+',u'=',u'+'};
+        keyMap_[LBRACKET] =     {'[','{',u'х',u'Х'};
+        keyMap_[RBRACKET] =     {']','}',u'ъ',u'Ъ'};
+        keyMap_[BACKSLASH] =    {'\\','|',u'\\',u'/'};
+        keyMap_[SEMI] =         {';',':',u'ж',u'Ж'};
+        keyMap_[QUOTE] =        {'\'','"',u'э',u'Э'};
+        keyMap_[COMMA] =        {',','<',u'б',u'Б'};
+        keyMap_[DOT] =          {'.','>',u'ю',u'Ю'};
+        keyMap_[SLASH] =        {'/','?',u'.',u','};
+        keyMap_[GRAVE] =        {'`','~',u'ё',u'Ё'};
     }
 
     void init() {
@@ -349,7 +350,7 @@ namespace KEYBOARD {
         return !(keyBits_[b] & m) && (prevKeyBits_[b] & m);
     }
 
-    bool getChar(char& out) {
+    bool getChar(bool isEng, uint16_t& out) {
         KeyEvent ev;
         if (!readKey(ev) || !ev.pressed)
             return false;
@@ -365,7 +366,11 @@ namespace KEYBOARD {
 
         bool shift = isPressed(SHIFT_LEFT) || isPressed(SHIFT_RIGHT);
         bool upper = capsLock_ ^ shift;
-        out = upper ? kc.shifted : kc.normal;
+        if (isEng) {
+            out = upper ? kc.shifted : kc.normal;
+        } else {
+            out = upper ? kc.ru_shifted : kc.ru_normal;
+        }
         return true;
     }
 

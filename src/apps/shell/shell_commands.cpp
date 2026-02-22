@@ -863,7 +863,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
         // blue gradient
         for (int cv = 0; cv < 4; cv++) {
             con.setColorRaw(cv << 6);
-            con.printRawChar((char)219, 20);
+            con.printRawChar(u'█', 20);
             con.useDefaultColor();
             con.printInt(cv);
             con.printLn();
@@ -872,7 +872,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
         // green gradient
         for (int cv = 0; cv < 8; cv++) {
             con.setColorRaw(cv << 3);
-            con.printRawChar((char)219, 20);
+            con.printRawChar(u'█', 20);
             con.useDefaultColor();
             con.printInt(cv);
             con.printLn();
@@ -881,7 +881,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
         // red gradient
         for (int cv = 0; cv < 8; cv++) {
             con.setColorRaw(cv);
-            con.printRawChar((char)219, 20);
+            con.printRawChar(u'█', 20);
             con.useDefaultColor();
             con.printInt(cv);
             con.printLn();
