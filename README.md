@@ -66,6 +66,7 @@
 
 ---
 
-## Лицензия
+## Credits
 
-В разработке.
+- VGA driver - https://github.com/bitluni/ESP32-S3-VGA
+- PNG reader - https://github.com/lvandeve/lodepng
