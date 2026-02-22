@@ -2,11 +2,13 @@
 #include "palette.h"
 #include "shell.h"
 #include "apps/helloworld/helloworld.h"
+#include "apps/viewer/viewer.h"
 // #include "player/player.h"
 #include "AppManager.h"
 #include "sdcard.h"
 #include "OTBFont.h"
 #include <LittleFS.h>
+
 
 #include <string.h>
 #include <stdio.h>
@@ -42,6 +44,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd);
 static bool cmd_sdspeed(Shell& shell, ShellParser& cmd);
 static bool cmd_glyph(Shell& shell, ShellParser& cmd);
 static bool cmd_fs(Shell& shell, ShellParser& cmd);
+static bool cmd_view(Shell& shell, ShellParser& cmd);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -77,6 +80,7 @@ static const ShellCommand commands[] = {
     { "SDSPEED", cmd_sdspeed, "Test speed of file read from sd" },
     { "GLYPH", cmd_glyph, "Show glyph bitmap for current font" },
     { "FS", cmd_fs, "FS" },
+    { "VIEW", cmd_view, "View image (bmp)" },
 };
 
 static const int commandCount =
@@ -907,38 +911,6 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-
-static uint16_t utf8ToUnicode(const char*& s)
-{
-    uint8_t c = (uint8_t)*s++;
-
-    // 1 byte (ASCII)
-    if(c < 0x80)
-        return c;
-
-    // 2 bytes
-    if((c & 0xE0) == 0xC0)
-    {
-        uint16_t result =
-            ((c & 0x1F) << 6) |
-            (*s++ & 0x3F);
-        return result;
-    }
-
-    // 3 bytes
-    if((c & 0xF0) == 0xE0)
-    {
-        uint16_t result =
-            ((c & 0x0F) << 12) |
-            ((*s++ & 0x3F) << 6) |
-            (*s++ & 0x3F);
-        return result;
-    }
-
-    // unsupported
-    return 0xFFFD;
-}
-
 static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
     auto& con = shell.console();
     auto& tiles = shell.console().tiles();
@@ -1042,6 +1014,38 @@ static bool cmd_fs(Shell& shell, ShellParser& cmd) {
 
     file.close();
     LittleFS.end();
+
+    return true;
+}
+
+static bool cmd_view(Shell& shell, ShellParser& cmd) {
+    auto& con = shell.console();
+
+    if (cmd.argc < 2) {
+        con.setColor(COLOR_RED);
+        con.printLn("Usage: VIEW <path>");
+        con.useDefaultColor();
+        return false;
+    }
+
+    char path[MAX_PATH];
+    shell.resolvePath(cmd.argv[1], path);
+
+    if (!sdCheck(shell)) {
+        return false;
+    }
+
+    // if (!SDCARD::fileExists(path)) {
+    //     con.setColor(COLOR_RED);
+    //     con.print("File not found: ");
+    //     con.printLn(path);
+    //     con.useDefaultColor();
+    //     return false;
+    // }
+
+    shell.app().requestSwitch(
+        new Viewer(cmd, path)
+    ); 
 
     return true;
 }
