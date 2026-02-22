@@ -8,6 +8,7 @@
 #include "keyboard.h"
 #include <BMPReader.h>
 #include <PNGReader.h>
+#include <JPGReader.h>
 
 Viewer::Viewer(const ShellParser& args, const char* fullPath)
     : _tiles(),
@@ -151,6 +152,38 @@ bool Viewer::open(const char* path) {
 
         if (!reader.read(*f, img, bufferSize)) {
             LOG.println("png read failed");
+            heap_caps_free(img);
+            img = nullptr;
+            SDCARD::close();
+        }
+
+    } else if (hasExtension(path, "jpg") || hasExtension(path, "jpeg")) {
+
+        JPGReader reader;
+
+        if (!reader.readHeader(*f, w, h)) {
+            LOG.println("jpg read header failed");
+            SDCARD::close();
+            return false;
+        }
+
+        if (w > screenW || h > screenH) {
+            _tiles.print("Image too big", 1, 1, COLOR_RED);
+            SDCARD::close();
+            return false;
+        }
+
+        size_t bufferSize = w * h;
+        img = (uint8_t*)heap_caps_malloc(bufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+
+        if (!img) {
+            LOG.println("img buffer not created");
+            SDCARD::close();
+            return false;
+        }
+
+        if (!reader.read(*f, img, bufferSize)) {
+            LOG.println("jpg read failed");
             heap_caps_free(img);
             img = nullptr;
             SDCARD::close();

@@ -70,3 +70,4 @@
 
 - VGA driver - https://github.com/bitluni/ESP32-S3-VGA
 - PNG reader - https://github.com/lvandeve/lodepng
+- JPEG reader - https://elm-chan.org/fsw/tjpgd/
