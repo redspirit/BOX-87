@@ -21,30 +21,30 @@
  *  COMMAND HANDLERS
  * ========================================================= */
 
-static bool cmd_cls(Shell& shell, ShellParser& cmd);
-static bool cmd_help(Shell& shell, ShellParser& cmd);
-static bool cmd_reboot(Shell& shell, ShellParser& cmd);
-static bool cmd_font(Shell& shell, ShellParser& cmd);
-static bool cmd_palette(Shell& shell, ShellParser& cmd);
-static bool cmd_pwd(Shell& shell, ShellParser& cmd);
-static bool cmd_cd(Shell& shell, ShellParser& cmd);
-static bool cmd_dir(Shell& shell, ShellParser& cmd);
-static bool cmd_type(Shell& shell, ShellParser& cmd);
-static bool cmd_mkdir(Shell& shell, ShellParser& cmd);
-static bool cmd_rd(Shell& shell, ShellParser& cmd);
-static bool cmd_del(Shell& shell, ShellParser& cmd);
-static bool cmd_write(Shell& shell, ShellParser& cmd);
-static bool cmd_append(Shell& shell, ShellParser& cmd);
-static bool cmd_lua(Shell& shell, ShellParser& cmd);
-static bool cmd_mem(Shell& shell, ShellParser& cmd);
-static bool cmd_hw(Shell& shell, ShellParser& cmd);
-static bool cmd_play(Shell& shell, ShellParser& cmd);
-static bool cmd_pcm(Shell& shell, ShellParser& cmd);
-static bool cmd_color(Shell& shell, ShellParser& cmd);
-static bool cmd_sdspeed(Shell& shell, ShellParser& cmd);
-static bool cmd_glyph(Shell& shell, ShellParser& cmd);
-static bool cmd_fs(Shell& shell, ShellParser& cmd);
-static bool cmd_view(Shell& shell, ShellParser& cmd);
+static bool cmd_cls(Shell& shell);
+static bool cmd_help(Shell& shell);
+static bool cmd_reboot(Shell& shell);
+static bool cmd_font(Shell& shell);
+static bool cmd_palette(Shell& shell);
+static bool cmd_pwd(Shell& shell);
+static bool cmd_cd(Shell& shell);
+static bool cmd_dir(Shell& shell);
+static bool cmd_type(Shell& shell);
+static bool cmd_mkdir(Shell& shell);
+static bool cmd_rd(Shell& shell);
+static bool cmd_del(Shell& shell);
+static bool cmd_write(Shell& shell);
+static bool cmd_append(Shell& shell);
+static bool cmd_lua(Shell& shell);
+static bool cmd_mem(Shell& shell);
+static bool cmd_hw(Shell& shell);
+static bool cmd_play(Shell& shell);
+static bool cmd_pcm(Shell& shell);
+static bool cmd_color(Shell& shell);
+static bool cmd_sdspeed(Shell& shell);
+static bool cmd_glyph(Shell& shell);
+static bool cmd_fs(Shell& shell);
+static bool cmd_view(Shell& shell);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -52,7 +52,7 @@ static bool cmd_view(Shell& shell, ShellParser& cmd);
 
 struct ShellCommand {
     const char* name;
-    bool (*handler)(Shell&, ShellParser&);
+    bool (*handler)(Shell&);
     const char* help;
 };
 
@@ -126,31 +126,26 @@ static bool sdCheck(Shell& shell) {
     return true;
 }
 
-static const char* getTextArg(const ShellParser& cmd) {
-    if (cmd.argc < 3)
-        return nullptr;
-
-    return cmd.argv[2];
-}
-
 /* =========================================================
  *  EXECUTOR
  * ========================================================= */
 
-bool shellExecute(Shell& shell, ShellParser& cmd) {
-    auto& con = shell.console();    
-    if (cmd.argc == 0)
+bool shellExecute(Shell& shell) {
+    auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
+    
+    if (cmd.argc() == 0)
         return false;
 
     for (int i = 0; i < commandCount; ++i) {
-        if (strcasecmp(cmd.argv[0], commands[i].name) == 0) {
-            return commands[i].handler(shell, cmd);
+        if (cmd.is(commands[i].name)) {
+            return commands[i].handler(shell);
         }
     }
 
     con.setColor(COLOR_RED);
     con.print("Unknown command: ");
-    con.print(cmd.argv[0]);
+    con.print(cmd.argv(0));
     con.useDefaultColor();
     con.printLn();
 
@@ -161,12 +156,13 @@ bool shellExecute(Shell& shell, ShellParser& cmd) {
  *  COMMAND IMPLEMENTATIONS
  * ========================================================= */
 
-static bool cmd_help(Shell& shell, ShellParser& cmd) {
-    auto& con = shell.console();  
+static bool cmd_help(Shell& shell) {
+    auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc == 2) {
+    if (cmd.argc() == 2) {
         for (int i = 0; i < commandCount; ++i) {
-            if (strcasecmp(cmd.argv[1], commands[i].name) == 0) {
+            if (strcasecmp(cmd.argv(1), commands[i].name) == 0) {
 
                 con.setColor(COLOR_YELLOW);
                 con.print(commands[i].name);
@@ -181,7 +177,7 @@ static bool cmd_help(Shell& shell, ShellParser& cmd) {
         // команда не найдена
         con.setColor(COLOR_RED);
         con.print("No help available for command: ");
-        con.printLn(cmd.argv[1]);
+        con.printLn(cmd.argv(1));
         con.setColor(COLOR_WHITE);
         return false;
     }
@@ -215,18 +211,18 @@ static bool cmd_help(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_cls(Shell& shell, ShellParser& cmd) {
+static bool cmd_cls(Shell& shell) {
     shell.console().clear();
     return true;
 }
 
-static bool cmd_reboot(Shell& shell, ShellParser& cmd) {
+static bool cmd_reboot(Shell& shell) {
     shell.console().printLn("Rebooting...");
     esp_restart();
     return true;
 }
 
-static bool cmd_font(Shell& shell, ShellParser& cmd) {
+static bool cmd_font(Shell& shell) {
     auto& con = shell.console();
     auto& font = con.tiles().getFont();
 
@@ -265,7 +261,7 @@ static bool cmd_font(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_palette(Shell& shell, ShellParser& cmd) {
+static bool cmd_palette(Shell& shell) {
     auto& con = shell.console();
 
     con.setColor(COLOR_CYAN);
@@ -294,7 +290,7 @@ static bool cmd_palette(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_pwd(Shell& shell, ShellParser& cmd) {
+static bool cmd_pwd(Shell& shell) {
     auto& con = shell.console();
     con.setColor(COLOR_YELLOW);
     con.printLn(shell.cwd());
@@ -302,16 +298,17 @@ static bool cmd_pwd(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_cd(Shell& shell, ShellParser& cmd) {
+static bool cmd_cd(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         shell.setCwd("/");
         return true;
     }
 
     char newPath[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], newPath);
+    shell.resolvePath(cmd.argv(1), newPath);
 
     if (!SDCARD::dirExists(newPath)) {
         con.setColor(COLOR_RED);
@@ -326,14 +323,15 @@ static bool cmd_cd(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_dir(Shell& shell, ShellParser& cmd) {
+static bool cmd_dir(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
     char path[MAX_PATH];
 
     // DIR или DIR <path>
-    if (cmd.argc > 1) {
-        shell.resolvePath(cmd.argv[1], path);
+    if (cmd.argc() > 1) {
+        shell.resolvePath(cmd.argv(1), path);
     } else {
         strncpy(path, shell.cwd(), MAX_PATH);
         path[MAX_PATH - 1] = 0;
@@ -357,10 +355,11 @@ static bool cmd_dir(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_type(Shell& shell, ShellParser& cmd) {
+static bool cmd_type(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: TYPE <file>");
         con.useDefaultColor();
@@ -368,7 +367,7 @@ static bool cmd_type(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
     if (!sdCheck(shell)) {
         return false;
@@ -389,10 +388,11 @@ static bool cmd_type(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_mkdir(Shell& shell, ShellParser& cmd) {
+static bool cmd_mkdir(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: MKDIR <dir>");
         con.useDefaultColor();
@@ -400,7 +400,7 @@ static bool cmd_mkdir(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
     if (!sdCheck(shell)) {
         return false;
@@ -417,10 +417,11 @@ static bool cmd_mkdir(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_rd(Shell& shell, ShellParser& cmd) {
+static bool cmd_rd(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: RD <dir>");
         con.useDefaultColor();
@@ -428,7 +429,7 @@ static bool cmd_rd(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
     if (!sdCheck(shell)) {
         return false;
@@ -445,10 +446,11 @@ static bool cmd_rd(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_del(Shell& shell, ShellParser& cmd) {
+static bool cmd_del(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: DEL <file>");
         con.useDefaultColor();
@@ -456,7 +458,7 @@ static bool cmd_del(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
     if (!sdCheck(shell)) {
         return false;
@@ -473,10 +475,11 @@ static bool cmd_del(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_write(Shell& shell, ShellParser& cmd) {
+static bool cmd_write(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: WRITE <file> [text]");
         con.useDefaultColor();
@@ -484,9 +487,10 @@ static bool cmd_write(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
-    const char* text = getTextArg(cmd);
+    // const char* text = getTextArg(cmd);
+    const char* text = "TEST STRING"; // todo тут надо вычленять строку из команды, пока это не работает
 
     if (!sdCheck(shell)) {
         return false;
@@ -503,10 +507,11 @@ static bool cmd_write(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_append(Shell& shell, ShellParser& cmd) {
+static bool cmd_append(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: APPEND <file> <text>");
         con.useDefaultColor();
@@ -514,9 +519,9 @@ static bool cmd_append(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
-    const char* text = getTextArg(cmd);
+    const char* text = "TEST STRING";
 
     if (!sdCheck(shell)) {
         return false;
@@ -533,10 +538,11 @@ static bool cmd_append(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
+static bool cmd_sdspeed(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 1) {
+    if (cmd.argc() < 1) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: SDSPEED <file>");
         con.useDefaultColor();
@@ -544,7 +550,7 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
     if (!sdCheck(shell)) {
         return false;
@@ -632,7 +638,7 @@ static bool cmd_sdspeed(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_mem(Shell& shell, ShellParser& cmd) {
+static bool cmd_mem(Shell& shell) {
     auto& con = shell.console();
 
     // ---------- Internal RAM ----------
@@ -689,10 +695,11 @@ static bool cmd_mem(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_lua(Shell& shell, ShellParser& cmd) {
+static bool cmd_lua(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: LUA <expression>");
         con.useDefaultColor();
@@ -700,7 +707,7 @@ static bool cmd_lua(Shell& shell, ShellParser& cmd) {
     }
 
     // всё после LUA — выражение
-    const char* expr = cmd.argv[1];
+    const char* expr = cmd.argv(1);
 
     char out[128];
 
@@ -716,17 +723,18 @@ static bool cmd_lua(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_hw(Shell& shell, ShellParser& cmd) {
+static bool cmd_hw(Shell& shell) {
     shell.app().requestSwitch(
         new HelloWorld()
     );
     return true;
 }
 
-static bool cmd_play(Shell& shell, ShellParser& cmd) {
+static bool cmd_play(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: PLAY <file>");
         con.useDefaultColor();
@@ -734,7 +742,7 @@ static bool cmd_play(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
     if (!sdCheck(shell)) {
         return false;
@@ -755,10 +763,11 @@ static bool cmd_play(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
+static bool cmd_pcm(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: PCM <file>");
         con.useDefaultColor();
@@ -766,7 +775,7 @@ static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
     if (!sdCheck(shell)) {
         return false;
@@ -787,11 +796,11 @@ static bool cmd_pcm(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_color(Shell& shell, ShellParser& cmd) {
-
+static bool cmd_color(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 3) {
+    if (cmd.argc() < 3) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: COLOR BIN 11111111");
         con.printLn("Usage: COLOR HEX FF");
@@ -800,8 +809,8 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
         con.useDefaultColor();
         return false;
     }
-    const char* mode  = cmd.argv[1];
-    const char* value = cmd.argv[2];
+    const char* mode  = cmd.argv(1);
+    const char* value = cmd.argv(2);
 
     uint8_t color = 0;
 
@@ -835,7 +844,7 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
         }
         color = (uint8_t)v;
     } else if (!strcasecmp(mode, "RGB")) {
-        if (cmd.argc < 5) {
+        if (cmd.argc() < 5) {
             con.setColor(COLOR_RED);
             con.printLn("Usage: COLOR RGB <R> <G> <B>");
             con.useDefaultColor();
@@ -852,9 +861,9 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
         };
 
         uint8_t r, g, b;
-        if (!parseByte(cmd.argv[2], r) ||
-            !parseByte(cmd.argv[3], g) ||
-            !parseByte(cmd.argv[4], b)) {
+        if (!parseByte(cmd.argv(2), r) ||
+            !parseByte(cmd.argv(3), g) ||
+            !parseByte(cmd.argv(4), b)) {
             con.setColor(COLOR_RED);
             con.printLn("RGB values must be 0..255");
             con.useDefaultColor();
@@ -911,11 +920,12 @@ static bool cmd_color(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
+static bool cmd_glyph(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
     auto& tiles = shell.console().tiles();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: GLYPH <char>");
         con.useDefaultColor();
@@ -926,7 +936,7 @@ static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
         return false;
     }
 
-    const char* ch  = cmd.argv[1];
+    const char* ch  = cmd.argv(1);
     int value = atoi(ch);
 
     char buffer[TYPE_MAX_SIZE + 1];
@@ -965,17 +975,18 @@ static bool cmd_glyph(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_fs(Shell& shell, ShellParser& cmd) {
+static bool cmd_fs(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: FS <path>");
         con.useDefaultColor();
         return false;
     }
 
-    const char* path  = cmd.argv[1];
+    const char* path  = cmd.argv(1);
 
 
     if(!LittleFS.begin()) {
@@ -1018,10 +1029,11 @@ static bool cmd_fs(Shell& shell, ShellParser& cmd) {
     return true;
 }
 
-static bool cmd_view(Shell& shell, ShellParser& cmd) {
+static bool cmd_view(Shell& shell) {
     auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
 
-    if (cmd.argc < 2) {
+    if (cmd.argc() < 2) {
         con.setColor(COLOR_RED);
         con.printLn("Usage: VIEW <path>");
         con.useDefaultColor();
@@ -1029,7 +1041,7 @@ static bool cmd_view(Shell& shell, ShellParser& cmd) {
     }
 
     char path[MAX_PATH];
-    shell.resolvePath(cmd.argv[1], path);
+    shell.resolvePath(cmd.argv(1), path);
 
     if (!sdCheck(shell)) {
         return false;
@@ -1044,7 +1056,7 @@ static bool cmd_view(Shell& shell, ShellParser& cmd) {
     }
 
     shell.app().requestSwitch(
-        new Viewer(cmd, path)
+        new Viewer(path)
     ); 
 
     return true;

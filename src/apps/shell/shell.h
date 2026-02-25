@@ -5,6 +5,7 @@
 #include "VGA/VGA.h"
 #include "sdcard.h"
 #include "shell_lua.h"
+#include "CmdParser.h"
 
 #define SHELL_CMD_MAX     64
 #define MAX_SEGMENTS      16
@@ -26,6 +27,7 @@ class Shell : public ISubsystem {
         void update(float dt) override;
         void tick() override;
 
+        CmdParser& parsedCmd() { return _cmdParser; }
         Console& console() { return _console; }
         ShellLua& lua() { return _lua; }
         AppManager& app() { return _app; }
@@ -41,6 +43,7 @@ class Shell : public ISubsystem {
         /* ==== DEVICES ==== */
         Console _console;
         ShellLua _lua;
+        CmdParser _cmdParser;
 
         bool _isEngLayout;
 

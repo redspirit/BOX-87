@@ -2,14 +2,13 @@
 #include "ISubsystem.h"
 #include "TextTiles.h"
 #include "SdReadBuffer.h"
-#include "apps/shell/shell_parser.h"
 #include "Audio.h"
 
 #define MAX_PATH 128
 
 class Player : public ISubsystem {
     public:
-        Player(const ShellParser& args, const char* fullPath);
+        Player(const char* fullPath);
         ~Player();
 
         bool init() override;
@@ -24,11 +23,9 @@ class Player : public ISubsystem {
         TextTiles _tiles;
         SdReadBuffer* _rb = nullptr;
         Audio _audio;
-        
-        int  _argc;
-        char _argv[SHELL_MAX_ARGS][SHELL_ARG_LEN];
-        char _path[MAX_PATH];
 
+        char _path[MAX_PATH];
+        
         uint32_t _frameTimeMs = 16;
         bool open(const char* path);
         void playFrame();

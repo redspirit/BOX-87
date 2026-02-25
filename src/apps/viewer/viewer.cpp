@@ -10,14 +10,8 @@
 #include <PNGReader.h>
 #include <JPGReader.h>
 
-Viewer::Viewer(const ShellParser& args, const char* fullPath)
-    : _tiles(),
-      _argc(args.argc){
-
-    for (int i = 0; i < _argc; ++i) {
-        strncpy(_argv[i], args.argv[i], SHELL_ARG_LEN);
-        _argv[i][SHELL_ARG_LEN - 1] = 0;
-    }
+Viewer::Viewer(const char* fullPath)
+    : _tiles() {
 
     strncpy(_path, fullPath, MAX_PATH);
     _path[MAX_PATH - 1] = 0;

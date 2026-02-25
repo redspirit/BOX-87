@@ -1,7 +1,6 @@
 #include "shell.h"
 #include "palette.h"
 #include "LOG.h"
-#include "shell_parser.h"
 #include "shell_commands.h"
 #include <apps/shell/logo.h>
 #include <string.h>
@@ -12,7 +11,8 @@
 Shell::Shell(AppManager& app)
     : _app(app),
       _console(),
-      _lua() {
+      _lua(), 
+      _cmdParser() {
 }
 
 Shell::~Shell() {
@@ -199,11 +199,10 @@ void Shell::onKeyEnter() {
 
     _console.printLn();
 
-    ShellParser parser;
-    if (parseCommand(_cmd, parser)) {
-        shellExecute(*this, parser);
+    if (_cmdParser.parse(_cmd)) {
+        shellExecute(*this);
     }
-    
+
     memset(_cmd, 0, sizeof(_cmd));
     _len = 0;
     _cursorPos = 0;

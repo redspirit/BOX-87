@@ -30,18 +30,12 @@ static uint32_t readU32(SdReadBuffer* rb) {
 // Ctor / Dtor
 // -----------------------------------------------------------------------------
 
-Player::Player(const ShellParser& args, const char* fullPath)
+Player::Player(const char* fullPath)
     : _tiles(),
       _rb(nullptr),
-      _argc(args.argc),
       currentFrame(0),
       _isPause(false),
       stateFB(nullptr) {
-
-    for (int i = 0; i < _argc; ++i) {
-        strncpy(_argv[i], args.argv[i], SHELL_ARG_LEN);
-        _argv[i][SHELL_ARG_LEN - 1] = 0;
-    }
 
     strncpy(_path, fullPath, MAX_PATH);
     _path[MAX_PATH - 1] = 0;
