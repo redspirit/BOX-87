@@ -87,41 +87,102 @@ bool Shell::init() {
 void Shell::update(float dt) {
     VGA::clear(0);
     _console.cursorUpdate(dt);
-    
-    // Логика переключения раскладки Alt + Shift
-    bool alt = KEYBOARD::isPressed(KEYBOARD::ALT_LEFT) || KEYBOARD::isPressed(KEYBOARD::ALT_RIGHT);
-    bool shift = KEYBOARD::isPressed(KEYBOARD::SHIFT_LEFT) || KEYBOARD::isPressed(KEYBOARD::SHIFT_RIGHT);
+
+    bool busy = (_activeCommand != nullptr);
+
+    // скрываем курсор
+    if (_console.getCursorVisible() && busy) {
+        _console.setCursorVisible(false);
+    }
+
+    // снова показываем курсор
+    if (!_console.getCursorVisible() && !busy) {
+        _console.setCursorVisible(true);
+    }  
+
+    // --- Обработка Ctrl+C ---
+    bool ctrl =
+        KEYBOARD::isPressed(KEYBOARD::CTRL_LEFT) ||
+        KEYBOARD::isPressed(KEYBOARD::CTRL_RIGHT);
+
+    if (ctrl && KEYBOARD::isJustPressed(KEYBOARD::C)) {
+        commandCancelRequest();
+    }
 
     uint16_t c;
     while (KEYBOARD::getChar(_isEngLayout, c)) {
-        onChar(c);
+        if (busy) {
+            // печатаем в команду
+            _activeCommand->onChar(*this, c);
+        } else {
+            // печатаем в консоль
+            onChar(c);
+        }            
     }
 
-    if (KEYBOARD::isJustPressed(KEYBOARD::BACKSPACE)) onKeyBack();
-    if (KEYBOARD::isJustPressed(KEYBOARD::ENTER))     onKeyEnter();
-    if (KEYBOARD::isJustPressed(KEYBOARD::LEFT))      onKeyLeft();
-    if (KEYBOARD::isJustPressed(KEYBOARD::RIGHT))     onKeyRight();
-    if (KEYBOARD::isJustPressed(KEYBOARD::UP))        onKeyUp();
-    if (KEYBOARD::isJustPressed(KEYBOARD::DOWN))      onKeyDown();
+    // --- Если выполняется long команда ---
+    if (!busy) {
+        if (KEYBOARD::isJustPressed(KEYBOARD::BACKSPACE)) onKeyBack();
+        if (KEYBOARD::isJustPressed(KEYBOARD::ENTER))     onKeyEnter();
+        if (KEYBOARD::isJustPressed(KEYBOARD::LEFT))      onKeyLeft();
+        if (KEYBOARD::isJustPressed(KEYBOARD::RIGHT))     onKeyRight();
+        if (KEYBOARD::isJustPressed(KEYBOARD::UP))        onKeyUp();
+        if (KEYBOARD::isJustPressed(KEYBOARD::DOWN))      onKeyDown();
 
-    // чекаем переключение языка на Alt + Shift
-    if ((alt && (KEYBOARD::isJustPressed(KEYBOARD::SHIFT_LEFT) || KEYBOARD::isJustPressed(KEYBOARD::SHIFT_RIGHT))) ||
-        (shift && (KEYBOARD::isJustPressed(KEYBOARD::ALT_LEFT) || KEYBOARD::isJustPressed(KEYBOARD::ALT_RIGHT)))) 
-    {
-        _isEngLayout = !_isEngLayout;
-        LOG.print("Layout changed to: ");
-        LOG.println(_isEngLayout ? "EN" : "RU");
-    }   
+        // Переключение раскладки
+        bool alt =
+            KEYBOARD::isPressed(KEYBOARD::ALT_LEFT) ||
+            KEYBOARD::isPressed(KEYBOARD::ALT_RIGHT);
+
+        bool shift =
+            KEYBOARD::isPressed(KEYBOARD::SHIFT_LEFT) ||
+            KEYBOARD::isPressed(KEYBOARD::SHIFT_RIGHT);
+
+        if ((alt && KEYBOARD::isJustPressed(KEYBOARD::SHIFT_LEFT)) ||
+            (alt && KEYBOARD::isJustPressed(KEYBOARD::SHIFT_RIGHT)) ||
+            (shift && KEYBOARD::isJustPressed(KEYBOARD::ALT_LEFT)) ||
+            (shift && KEYBOARD::isJustPressed(KEYBOARD::ALT_RIGHT)))
+        {
+            _isEngLayout = !_isEngLayout;
+        }
+    }
+
+    // --- Long command tick ---
+    tick();
 
     _console.show();
-    if (KEYBOARD::isJustPressed(KEYBOARD::PRINT_SCREEN)) onPrintScreen(); 
+
+    if (KEYBOARD::isJustPressed(KEYBOARD::PRINT_SCREEN))
+        onPrintScreen();
 
     VGA::show();
     KEYBOARD::beginFrame();
 }
 
 void Shell::tick() {
+    if (!_activeCommand)
+        return;
 
+    if (_commandCancelRequested) {
+
+        _activeCommand->cancel(*this);
+        delete _activeCommand;
+        _activeCommand = nullptr;
+
+        _commandCancelRequested = false;
+        printPrompt();
+        return;
+    }
+
+    _activeCommand->tick(*this);
+
+    if (_activeCommand->isFinished()) {
+
+        delete _activeCommand;
+        _activeCommand = nullptr;
+
+        printPrompt();
+    }
 }
 
 void Shell::printPrompt() {
@@ -207,7 +268,13 @@ void Shell::onKeyEnter() {
     _len = 0;
     _cursorPos = 0;
 
-    printPrompt();
+    // НЕ вызываем printPrompt() если есть long команда
+    if (!_activeCommand)
+        printPrompt();
+}
+
+void Shell::commandCancelRequest() {
+    _commandCancelRequested = true;
 }
 
 void Shell::onKeyLeft() {
@@ -363,4 +430,12 @@ void Shell::resolvePath(const char* input, char* out) {
     }
 
     *dst = 0;
+}
+
+void Shell::setActiveCommand(IShellCommand* cmd) {
+    _activeCommand = cmd;
+}
+
+bool Shell::hasActiveCommand() const {
+    return _activeCommand != nullptr;
 }

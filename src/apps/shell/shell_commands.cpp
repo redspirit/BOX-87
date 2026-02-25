@@ -1,6 +1,7 @@
 #include "shell_commands.h"
 #include "palette.h"
 #include "shell.h"
+#include "CmdPing.h"
 #include "apps/helloworld/helloworld.h"
 #include "apps/viewer/viewer.h"
 // #include "player/player.h"
@@ -9,13 +10,17 @@
 #include "OTBFont.h"
 #include <LittleFS.h>
 
-
 #include <string.h>
 #include <stdio.h>
 #include <esp_system.h>
 
 #define TYPE_MAX_SIZE 1024
 #define SDSPEED_BUFFER  (32 * 1024)  // 32 KB
+
+
+static IShellCommand* create_ping() {
+    return new CmdPing();
+}
 
 /* =========================================================
  *  COMMAND HANDLERS
@@ -53,38 +58,39 @@ static bool cmd_view(Shell& shell);
 struct ShellCommand {
     const char* name;
     bool (*handler)(Shell&);
+    IShellCommand* (*create)();
     const char* help;
 };
 
 static const ShellCommand commands[] = {
-    { "HELP",  cmd_help,  "Get this help" },
-    { "CLS",  cmd_cls,  "Clear screen" },
-    { "REBOOT", cmd_reboot, "Restart system" },
-    { "FONT",   cmd_font,  "Show font table" },
-    { "PALETTE",  cmd_palette,  "Show color palette" },
-    { "PWD",  cmd_pwd,  "Show current directory" },
-    { "CD",  cmd_cd,  "Change current directory" },
-    { "DIR",  cmd_dir,  "List directory contents" },
-    { "TYPE",  cmd_type,  "Display text file" },
-    { "RD",    cmd_rd,    "Remove empty directory" },
-    { "DEL",   cmd_del,   "Delete file" },
-    { "MKDIR", cmd_mkdir, "Create directory" },
-    { "WRITE",  cmd_write,  "Write text file or create empty" },
-    { "APPEND", cmd_append, "Append text to file" },
-    { "LUA", cmd_lua, "Execute Lua expression" },
-    { "MEM", cmd_mem, "Show memory info" },
-    { "HW", cmd_hw, "Start Hello World application" },
-    { "PLAY", cmd_play, "Play media file" },
-    { "PCM", cmd_pcm, "Play pcm audio file" },
-    { "COLOR", cmd_color, "Show specific color" },
-    { "SDSPEED", cmd_sdspeed, "Test speed of file read from sd" },
-    { "GLYPH", cmd_glyph, "Show glyph bitmap for current font" },
-    { "FS", cmd_fs, "FS" },
-    { "VIEW", cmd_view, "View image (bmp)" },
+    { "HELP",  cmd_help,  nullptr, "Get this help" },
+    { "CLS",  cmd_cls,  nullptr, "Clear screen" },
+    { "REBOOT", cmd_reboot, nullptr, "Restart system" },
+    { "FONT",   cmd_font,  nullptr, "Show font table" },
+    { "PALETTE",  cmd_palette, nullptr, "Show color palette" },
+    { "PWD",  cmd_pwd, nullptr, "Show current directory" },
+    { "CD",  cmd_cd, nullptr, "Change current directory" },
+    { "DIR",  cmd_dir, nullptr, "List directory contents" },
+    { "TYPE",  cmd_type, nullptr, "Display text file" },
+    { "RD",    cmd_rd,  nullptr,  "Remove empty directory" },
+    { "DEL",   cmd_del, nullptr,  "Delete file" },
+    { "MKDIR", cmd_mkdir, nullptr, "Create directory" },
+    { "WRITE",  cmd_write, nullptr, "Write text file or create empty" },
+    { "APPEND", cmd_append, nullptr, "Append text to file" },
+    { "LUA", cmd_lua, nullptr, "Execute Lua expression" },
+    { "MEM", cmd_mem, nullptr, "Show memory info" },
+    { "HW", cmd_hw, nullptr, "Start Hello World application" },
+    { "PLAY", cmd_play, nullptr, "Play media file" },
+    { "PCM", cmd_pcm, nullptr, "Play pcm audio file" },
+    { "COLOR", cmd_color, nullptr, "Show specific color" },
+    { "SDSPEED", cmd_sdspeed, nullptr, "Test speed of file read from sd" },
+    { "GLYPH", cmd_glyph, nullptr, "Show glyph bitmap for current font" },
+    { "FS", cmd_fs, nullptr, "FS" },
+    { "VIEW", cmd_view, nullptr, "View image" },
+    { "PING", nullptr, create_ping, "Test log command" },
 };
 
-static const int commandCount =
-    sizeof(commands) / sizeof(commands[0]);
+static const int commandCount = sizeof(commands) / sizeof(commands[0]);
 
 static char hexDigit(uint8_t v) {
     return (v < 10) ? ('0' + v) : ('A' + (v - 10));
@@ -115,7 +121,6 @@ static void dirCallback(void* user, const char* name, bool isDir) {
     con.printLn(name);
 }
 
-
 static bool sdCheck(Shell& shell) {
     if (!SDCARD::init()) {
         shell.console().setColor(COLOR_RED);
@@ -139,6 +144,24 @@ bool shellExecute(Shell& shell) {
 
     for (int i = 0; i < commandCount; ++i) {
         if (cmd.is(commands[i].name)) {
+            if (commands[i].handler == nullptr) {
+
+                if (shell.hasActiveCommand()) {
+                    con.printLn("Another command already running");
+                    return false;
+                }
+
+                IShellCommand* c = commands[i].create();
+                if (!c)
+                    return false;
+
+                shell.setActiveCommand(c);
+                c->start(shell);
+
+                return true;                
+
+            } 
+
             return commands[i].handler(shell);
         }
     }

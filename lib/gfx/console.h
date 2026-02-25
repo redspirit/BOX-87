@@ -29,6 +29,7 @@ class Console {
 
         void cursorSetup(char cursorChar, float cursorBlinkSpeed);
         void setCursorVisible(bool visible);
+        bool const getCursorVisible();
         void setCursor(int x, int y);
         void getCursor(int& x, int& y) const;
 

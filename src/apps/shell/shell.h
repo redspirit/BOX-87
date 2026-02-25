@@ -6,6 +6,7 @@
 #include "sdcard.h"
 #include "shell_lua.h"
 #include "CmdParser.h"
+#include "IShellCommand.h"
 
 #define SHELL_CMD_MAX     64
 #define MAX_SEGMENTS      16
@@ -35,9 +36,11 @@ class Shell : public ISubsystem {
         const char* cwd() const { return _cwd; }
         void setCwd(const char* path);
         void resolvePath(const char* input, char* out);
+        void commandCancelRequest();   // Ctrl+C
+        void setActiveCommand(IShellCommand* cmd);
+        bool hasActiveCommand() const;
 
     private:
-
         AppManager& _app;
 
         /* ==== DEVICES ==== */
@@ -46,6 +49,9 @@ class Shell : public ISubsystem {
         CmdParser _cmdParser;
 
         bool _isEngLayout;
+
+        IShellCommand* _activeCommand = nullptr;
+        bool _commandCancelRequested = false;
 
         /* ==== COMMAND LINE ==== */
         char _cmd[SHELL_CMD_MAX];

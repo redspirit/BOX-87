@@ -231,3 +231,7 @@ void Console::setCursorVisible(bool visible) {
     cursorPhase_   = true;     // сразу зажигаем при включении
     blinkTimer_    = 0.0f;
 }
+
+bool const Console::getCursorVisible() {
+    return cursorEnabled_;
+}
