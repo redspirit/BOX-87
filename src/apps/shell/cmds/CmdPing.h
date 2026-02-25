@@ -1,5 +1,5 @@
-#include "IShellCommand.h"
-#include "shell.h"
+#include "../IShellCommand.h"
+#include "../shell.h"
 
 class CmdPing : public IShellCommand {
 private:

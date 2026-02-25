@@ -1,7 +1,8 @@
 #include "shell_commands.h"
 #include "palette.h"
 #include "shell.h"
-#include "CmdPing.h"
+#include "cmds/CmdPing.h"
+#include "cmds/CmdSdSpeed.h"
 #include "apps/helloworld/helloworld.h"
 #include "apps/viewer/viewer.h"
 // #include "player/player.h"
@@ -15,11 +16,12 @@
 #include <esp_system.h>
 
 #define TYPE_MAX_SIZE 1024
-#define SDSPEED_BUFFER  (32 * 1024)  // 32 KB
-
 
 static IShellCommand* create_ping() {
     return new CmdPing();
+}
+static IShellCommand* create_sd_speed() {
+    return new CmdSdSpeed();
 }
 
 /* =========================================================
@@ -46,7 +48,6 @@ static bool cmd_hw(Shell& shell);
 static bool cmd_play(Shell& shell);
 static bool cmd_pcm(Shell& shell);
 static bool cmd_color(Shell& shell);
-static bool cmd_sdspeed(Shell& shell);
 static bool cmd_glyph(Shell& shell);
 static bool cmd_fs(Shell& shell);
 static bool cmd_view(Shell& shell);
@@ -83,10 +84,10 @@ static const ShellCommand commands[] = {
     { "PLAY", cmd_play, nullptr, "Play media file" },
     { "PCM", cmd_pcm, nullptr, "Play pcm audio file" },
     { "COLOR", cmd_color, nullptr, "Show specific color" },
-    { "SDSPEED", cmd_sdspeed, nullptr, "Test speed of file read from sd" },
     { "GLYPH", cmd_glyph, nullptr, "Show glyph bitmap for current font" },
     { "FS", cmd_fs, nullptr, "FS" },
     { "VIEW", cmd_view, nullptr, "View image" },
+    { "SDSPEED", nullptr, create_sd_speed, "Test speed of file read from sd" },
     { "PING", nullptr, create_ping, "Test log command" },
 };
 
@@ -557,106 +558,6 @@ static bool cmd_append(Shell& shell) {
         con.useDefaultColor();
         return false;
     }
-
-    return true;
-}
-
-static bool cmd_sdspeed(Shell& shell) {
-    auto& con = shell.console();
-    auto& cmd = shell.parsedCmd();
-
-    if (cmd.argc() < 1) {
-        con.setColor(COLOR_RED);
-        con.printLn("Usage: SDSPEED <file>");
-        con.useDefaultColor();
-        return false;
-    }
-
-    char path[MAX_PATH];
-    shell.resolvePath(cmd.argv(1), path);
-
-    if (!sdCheck(shell)) {
-        return false;
-    }
-
-    size_t fileSize = SDCARD::fileSize(path);
-    if (fileSize == 0) {
-        con.setColor(COLOR_RED);
-        con.printLn("File not found or empty");
-        con.useDefaultColor();        
-        return false;
-    }
-
-    if (!SDCARD::open(path)) {
-        con.setColor(COLOR_RED);
-        con.printLn("Failed to open file");
-        con.useDefaultColor();          
-        return false;
-    }
-
-    uint8_t* buffer = (uint8_t*)malloc(SDSPEED_BUFFER);
-    if (!buffer) {
-        con.setColor(COLOR_RED);        
-        con.printLn("Out of memory!");
-        con.useDefaultColor();
-        SDCARD::close();
-        return false;
-    }
-
-    uint64_t totalRead = 0;
-    uint32_t startTime = millis();
-    uint32_t lastReport = startTime;
-    uint64_t lastReadBytes = 0;
-
-    con.printLn("Starting SD speed test...");
-    con.printLn();
-
-    while (SDCARD::available()) {
-        size_t toRead = SDSPEED_BUFFER;
-        if (fileSize - totalRead < SDSPEED_BUFFER)
-            toRead = fileSize - totalRead;
-
-        size_t read = SDCARD::read(buffer, toRead);
-        if (read == 0)
-            break;
-
-        totalRead += read;
-
-        uint32_t now = millis();
-
-        // Раз в секунду выводим статистику
-        if (now - lastReport >= 1000) {
-
-            uint32_t interval = now - lastReport;
-            uint64_t intervalBytes = totalRead - lastReadBytes;
-            uint32_t speedKB = (intervalBytes / 1024) * 1000 / interval;
-            uint32_t percent = (totalRead * 100ULL) / fileSize;
-
-            con.printInt((int)percent); con.print("%  ");
-            con.printInt((int)totalRead); con.print(" bytes ");
-            con.printInt((int)speedKB); con.printLn(" KB/s");
-
-            lastReport = now;
-            lastReadBytes = totalRead;
-        }
-        delay(0);
-    }
-
-    uint32_t endTime = millis();
-    uint32_t totalTime = endTime - startTime;
-
-    SDCARD::close();
-    free(buffer);
-
-    if (totalTime == 0) totalTime = 1;
-
-    uint32_t avgKB = (totalRead / 1024) * 1000 / totalTime;
-
-    con.printLn();
-    con.printLn("=== SD SPEED SUMMARY ===");
-    con.print("File size: "); con.printInt(fileSize); con.printLn();
-    con.print("Time: "); con.printInt((int)totalTime); con.printLn(" ms");
-    con.print("Average speed: "); con.printInt((int)avgKB); con.printLn(" KB/s");    
 
     return true;
 }

@@ -164,7 +164,6 @@ void Shell::tick() {
         return;
 
     if (_commandCancelRequested) {
-
         _activeCommand->cancel(*this);
         delete _activeCommand;
         _activeCommand = nullptr;
@@ -177,10 +176,8 @@ void Shell::tick() {
     _activeCommand->tick(*this);
 
     if (_activeCommand->isFinished()) {
-
         delete _activeCommand;
         _activeCommand = nullptr;
-
         printPrompt();
     }
 }
