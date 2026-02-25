@@ -912,7 +912,6 @@ static bool cmd_fs(Shell& shell) {
 
     const char* path  = cmd.argv(1);
 
-
     if(!LittleFS.begin()) {
         con.print("LittleFS mount failed");
         return false;

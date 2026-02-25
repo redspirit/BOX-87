@@ -2,7 +2,6 @@
 #include "palette.h"
 #include "LOG.h"
 #include "shell_commands.h"
-#include <apps/shell/logo.h>
 #include <string.h>
 #include <stdio.h>
 #include "BMPScreen.h"
@@ -30,11 +29,6 @@ bool Shell::init() {
 
     strcpy(_cwd, "/");
 
-    _console.insertLogo(IMG_DATA, IMG_W, IMG_H, 0, 1);
-    _console.printLn();
-    _console.printLn();
-    _console.printLn();
-    _console.printLn();
     _console.setColor(COLOR_GREEN);
     _console.printLn(" BOX-87 SYSTEM SHELL ROM v0.1");
     _console.printLn(" (c) 2026 RedSpirit");

@@ -106,47 +106,6 @@ void TextTiles::print(const char* text, int x, int y, uint8_t color) {
     }
 }
 
-void TextTiles::setImage(
-    const uint8_t* data,
-    uint16_t w,
-    uint16_t h,
-    int16_t x,
-    int16_t y
-) {
-    _image.data = data;
-    _image.width = w;
-    _image.height = h;
-    _image.x = x;
-    _image.y = y;
-    _image.enabled = true;
-}
-
-void TextTiles::hideImage() {
-    _image.enabled = false;
-}
-
-void TextTiles::imageY(int16_t y) {
-    _image.y = y;
-
-    if (!_image.data || !_image.height) {
-        _image.enabled = false;
-        return;
-    }
-
-    const int screenH = VGA::height();
-
-    // положение картинки на экране
-    int screenTop    = _image.y;
-    int screenBottom = screenTop + _image.height;
-
-    // проверка пересечения с экраном
-    if (screenBottom <= 0 || screenTop >= screenH) {
-        _image.enabled = false;
-    } else {
-        _image.enabled = true;
-    }
-}
-
 
 void TextTiles::drawText() {
     for (int ty = 0; ty < gridH_; ty++) {
@@ -156,52 +115,6 @@ void TextTiles::drawText() {
                 continue;
 
             renderTile(tx * tileW_, ty * tileH_, t);
-        }
-    }
-}
-
-void TextTiles::drawImage(int scale) {
-    if (!_image.enabled || !_image.data)
-        return;
-
-    if (scale <= 0)
-        scale = 1;
-
-    const int screenW = VGA::width();
-    const int screenH = VGA::height();
-
-    const int bytesPerRow = _image.width / 4;
-
-    for (int y = 0; y < _image.height; y++) {
-
-        // каждая строка исходника масштабируется по вертикали
-        for (int sy_repeat = 0; sy_repeat < scale; sy_repeat++) {
-            int sy = _image.y + y * scale + sy_repeat;
-            if (sy < 0 || sy >= screenH) continue;
-            uint8_t* dst = VGA::getLinePtr8(sy);
-            const uint8_t* src = _image.data + y * bytesPerRow;
-
-            for (int bx = 0; bx < bytesPerRow; bx++) {
-                uint8_t b = src[bx];
-                int baseX = _image.x + (bx * 4) * scale;
-
-                // распаковка 4 пикселей (2bpp)
-                for (int i = 0; i < 4; i++) {
-                    uint8_t colorIdx = (b >> (6 - i * 2)) & 0x03;
-                    if (colorIdx == 1) // прозрачный
-                        continue;
-
-                    uint8_t finalColor = getColorByPalette(colorIdx + 96);
-                    int startX = baseX + i * scale;
-
-                    // горизонтальный масштаб
-                    for (int sx_repeat = 0; sx_repeat < scale; sx_repeat++) {
-                        int sx = startX + sx_repeat;
-                        if (sx < 0 || sx >= screenW) continue;
-                        dst[sx] = finalColor;
-                    }
-                }
-            }
         }
     }
 }
@@ -221,7 +134,6 @@ void TextTiles::render() {
         return;
 
     drawText();
-    drawImage(2);
     drawCursor();
 }
 
