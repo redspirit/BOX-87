@@ -1,7 +1,11 @@
 #pragma once
 #include <stdint.h>
-#include "CharTile.h"
 #include "OTBFont.h"
+
+struct CharTile {
+    uint16_t ch;
+    uint8_t color;
+};
 
 class TextTiles {
 public:
@@ -24,8 +28,10 @@ public:
     void render();
     void renderTileBitmap(int px, int py, const uint8_t* glyph);
 
-    int width()  const { return gridW_; }
-    int height() const { return gridH_; }
+    int gridWidth()  const { return gridW_; }
+    int gridHeight() const { return gridH_; }    
+    int tileWidth()  const { return tileW_; }
+    int tileHeight() const { return tileH_; }
 
     void setTransparent(bool enabled);
     OTBFont& getFont();

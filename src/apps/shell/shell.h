@@ -85,6 +85,7 @@ class Shell : public ISubsystem {
         void onKeyUp();
         void onKeyDown();
         void onPrintScreen();
+        bool loadLogo(uint8_t*& img, int& w, int& h);
 
         /* ==== HISTORY ==== */
         void historyAdd(const char* line);

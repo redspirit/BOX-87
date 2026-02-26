@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include "BMPScreen.h"
 #include "sdcard.h"
+#include <LittleFS.h>
+#include <PNGReader.h>
 
 Shell::Shell(AppManager& app)
     : _app(app),
@@ -15,6 +17,52 @@ Shell::Shell(AppManager& app)
 }
 
 Shell::~Shell() {
+}
+
+bool Shell::loadLogo(uint8_t*& img, int& w, int& h) {
+    if(!LittleFS.begin()) {
+        LOG.println("[TextTiles] LittleFS mount failed");
+        return false;
+    }
+
+    File f = LittleFS.open("/logo/box87.png", "r");
+    if(!f) {
+        LOG.println("[loadLogo] Failed to open font file");
+        LittleFS.end();
+        return false;
+    }
+
+    PNGReader reader;
+
+    if (!reader.readHeader(f, w, h)) {
+        LOG.println("png read header failed");
+        f.close();
+        LittleFS.end();
+        return false;
+    }
+
+    size_t bufferSize = w * h;
+    img = (uint8_t*)heap_caps_malloc(bufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+
+    if (!img) {
+        LOG.println("img logo buffer not created");
+        f.close();
+        LittleFS.end();
+        return false;
+    }
+
+    if (!reader.read(f, img, bufferSize)) {
+        LOG.println("logo png read failed");
+        heap_caps_free(img);
+        img = nullptr;
+        f.close();
+        LittleFS.end();
+        return false;
+    }
+
+    f.close();
+    LittleFS.end();
+    return true;
 }
 
 bool Shell::init() {
@@ -28,6 +76,14 @@ bool Shell::init() {
     _cursorPos = 0;
 
     strcpy(_cwd, "/");
+
+    uint8_t* logoImg = nullptr;
+    int w = 0;
+    int h = 0;
+    if(loadLogo(logoImg, w, h)) {
+        LOG.println("logo load ok!");
+        _console.insertImage(logoImg, w, h);
+    }
 
     _console.setColor(COLOR_GREEN);
     _console.printLn(" BOX-87 SYSTEM SHELL ROM v0.1");

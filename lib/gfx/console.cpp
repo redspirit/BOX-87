@@ -6,7 +6,13 @@
 #include <palette.h>
 #include "UTF8.h"
 
-Console::Console(): tiles_() {}
+Console::Console()
+    : tiles_(), sprites_()
+{
+    for (int i = 0; i < MAX_IMAGES; i++) {
+        inlineImages_[i].active = false;
+    }
+}
 
 Console::~Console() {
     if (buffer_) {
@@ -19,8 +25,8 @@ void Console::init(uint8_t defaultColor) {
     // создаём и инициализируем TextTiles
     tiles_.init();
 
-    width_  = tiles_.width();
-    height_ = tiles_.height();
+    width_  = tiles_.gridWidth();
+    height_ = tiles_.gridHeight();
 
     buffer_ = (CharTile*)malloc(width_ * height_ * sizeof(CharTile));
     memset(buffer_, 0, width_ * height_ * sizeof(CharTile));
@@ -71,6 +77,32 @@ void Console::clearLine(int row) {
 void Console::scrollUp() {
     head_ = (head_ + 1) % height_;
     if (cy_ > 0) cy_--;
+
+    // двигаем все инлайн картинки
+    int tileH = tiles_.tileHeight();
+    for (int i = 0; i < MAX_IMAGES; i++) {
+
+        if (!inlineImages_[i].active)
+            continue;
+
+        inlineImages_[i].yPixels -= tileH;
+
+        sprites_.setPositionY(
+            inlineImages_[i].spriteIndex,
+            inlineImages_[i].yPixels
+        );
+
+        // если полностью ушла вверх
+        if (inlineImages_[i].yPixels +
+            inlineImages_[i].heightPixels < 0)
+        {
+            sprites_.removeSprite(
+                inlineImages_[i].spriteIndex
+            );
+
+            inlineImages_[i].active = false;
+        }
+    }
 }
 
 void Console::newLine() {
@@ -188,6 +220,7 @@ void Console::cursorUpdate(float dt) {
 
 void Console::show() {
     show(0, height_ - 1);
+    sprites_.render();   // поверх текста
 }
 
 void Console::show(int y1, int y2) {
@@ -227,4 +260,45 @@ void Console::setCursorVisible(bool visible) {
 
 bool const Console::getCursorVisible() {
     return cursorEnabled_;
+}
+
+int Console::insertImage(uint8_t* buffer, int w, int h) {
+    if (!buffer)
+        return -1;
+
+    // ищем свободный слот inline image
+    int imgSlot = -1;
+    for (int i = 0; i < MAX_IMAGES; i++) {
+        if (!inlineImages_[i].active) {
+            imgSlot = i;
+            break;
+        }
+    }
+
+    if (imgSlot == -1)
+        return -1;   // нет свободных слотов
+
+    int tileW = tiles_.tileWidth();
+    int tileH = tiles_.tileHeight();
+
+    int px = cx_ * tileW;
+    int py = cy_ * tileH;
+
+    int spriteIndex = sprites_.addSprite(buffer, px, py, w, h);
+
+    if (spriteIndex < 0)
+        return -1;   // нет слотов спрайтов
+
+    inlineImages_[imgSlot].spriteIndex   = spriteIndex;
+    inlineImages_[imgSlot].yPixels       = py;
+    inlineImages_[imgSlot].heightPixels  = h;
+    inlineImages_[imgSlot].active        = true;
+
+    // --- освобождаем строки под картинку ---
+    int rowsNeeded = (h + tileH - 1) / tileH;
+
+    for (int i = 0; i <= rowsNeeded; i++)
+        newLine();
+
+    return spriteIndex;
 }

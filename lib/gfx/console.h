@@ -1,7 +1,16 @@
 #pragma once
 #include <stdint.h>
-#include "CharTile.h"
 #include "TextTiles.h"
+#include "SpritesRender.h"
+
+#define MAX_IMAGES   4
+
+struct InlineImage {
+    int spriteIndex;
+    int yPixels;
+    int heightPixels;
+    bool active;
+};
 
 class Console {
     public:
@@ -37,10 +46,13 @@ class Console {
 
         void show();
         void show(int y1, int y2);
+        int insertImage(uint8_t* buffer, int w, int h);
 
     private:
         // owned
         TextTiles tiles_;
+        SpritesRender sprites_;
+        InlineImage inlineImages_[MAX_IMAGES];
 
         int width_  = 0;
         int height_ = 0;

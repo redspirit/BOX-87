@@ -48,7 +48,7 @@ bool TextTiles::setFontFile(const char* path, bool isSD) {
         LittleFS.end();
     }
 
-    tileW_ = _font.getWidth();;
+    tileW_ = _font.getWidth();
     tileH_ = _font.getHeight();
 
     gridW_ = VGA::width() / tileW_; // округляется вниз до целого автоматически
