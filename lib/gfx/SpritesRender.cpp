@@ -34,12 +34,23 @@ int SpritesRender::addSprite(uint8_t* buffer, int x, int y, int w, int h) {
             sprites_[i].w = w;
             sprites_[i].h = h;
             sprites_[i].active = true;
+            sprites_[i].transparentColor = -1;
             return i;
         }
     }
 
     // Нет свободных слотов
     return -1;
+}
+
+void SpritesRender::setTransparentColor(int index, int color) {
+    if (index < 0 || index >= MAX_SPRITES)
+        return;
+
+    if (!sprites_[index].active)
+        return;
+
+    sprites_[index].transparentColor = color;
 }
 
 void SpritesRender::setPosition(int index, int x, int y) {
@@ -145,15 +156,17 @@ void SpritesRender::drawSprite(const Sprite& s) {
             (srcStartY + y) * s.w +
             srcStartX;
 
-        // если без прозрачности то копируем просто
-        memcpy(dst, src, copyW);
-
-        // Пиксельный copy с color-key
-        // for (int x = 0; x < copyW; x++) {
-        //     uint8_t pixel = src[x];
-        //     if (pixel != 0xFF) {
-        //         dst[x] = pixel;
-        //     }
-        // }
+        if (s.transparentColor == -1) {
+            // прозрачность не указана
+            memcpy(dst, src, copyW);
+        } else {
+            // копируем попиксельно с прозрачностью
+            for (int x = 0; x < copyW; x++) {
+                uint8_t pixel = src[x];
+                if (pixel != s.transparentColor) {
+                    dst[x] = pixel;
+                }
+            }
+        }
     }
 }

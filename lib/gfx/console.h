@@ -19,7 +19,8 @@ class Console {
 
         void init(uint8_t defaultColor);
 
-        TextTiles& tiles();
+        TextTiles& tiles() { return tiles_; }
+        SpritesRender& sprites() { return sprites_; };
 
         void clear();
 

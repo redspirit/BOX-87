@@ -25,7 +25,7 @@ bool Shell::loadLogo(uint8_t*& img, int& w, int& h) {
         return false;
     }
 
-    File f = LittleFS.open("/logo/box87.png", "r");
+    File f = LittleFS.open("/logo/box87x2.png", "r");
     if(!f) {
         LOG.println("[loadLogo] Failed to open font file");
         LittleFS.end();
@@ -81,8 +81,8 @@ bool Shell::init() {
     int w = 0;
     int h = 0;
     if(loadLogo(logoImg, w, h)) {
-        LOG.println("logo load ok!");
-        _console.insertImage(logoImg, w, h);
+        int imageId = _console.insertImage(logoImg, w, h);
+        _console.sprites().setTransparentColor(imageId, 0xFF);
     }
 
     _console.setColor(COLOR_GREEN);

@@ -37,10 +37,6 @@ void Console::init(uint8_t defaultColor) {
     clear();
 }
 
-TextTiles& Console::tiles() {
-    return tiles_;
-}
-
 void Console::clear() {
     for (int i = 0; i < height_; i++)
         clearLine(i);

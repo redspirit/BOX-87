@@ -10,6 +10,7 @@ public:
         int w;
         int h;
         bool active;
+        int transparentColor;
     };
 
 public:
@@ -17,6 +18,7 @@ public:
     ~SpritesRender();
 
     int  addSprite(uint8_t* buffer, int x, int y, int w, int h);
+    void setTransparentColor(int index, int color);
     void setPosition(int index, int x, int y);
     void setPositionY(int index, int y);
     void removeSprite(int index);
