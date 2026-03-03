@@ -21,7 +21,7 @@ public:
     bool setFontFile(const char* path, bool isSD);
 
     void drawTile(int x, int y, CharTile t);
-    void drawTileForeground(int x, int y, CharTile t);
+    void drawTileForeground(int x, int y, CharTile t, bool isInversion = false);
     void foregroundVisible(bool visible);
 
     void print(const char* text, int x, int y, uint8_t color);
@@ -50,14 +50,15 @@ private:
     int fgX_ = 0;
     int fgY_ = 0;
     bool fgVisible_ = false;
-    
+    bool fgInversion_ = false;
+
     bool transparent_ = true;
 
     inline CharTile& tileAt(int x, int y) {
         return tilemap_[y * gridW_ + x];
     }
 
-    void renderTile(int px, int py, const CharTile& t);
+    void renderTile(int px, int py, const CharTile& t, bool isForegroudTile);
     void drawText();
     void drawCursor();
 };

@@ -82,10 +82,11 @@ void TextTiles::drawTile(int x, int y, CharTile t) {
     tileAt(x, y) = t;
 }
 
-void TextTiles::drawTileForeground(int x, int y, CharTile t) {
+void TextTiles::drawTileForeground(int x, int y, CharTile t, bool isInversion) {
     fgX_ = x;
     fgY_ = y;
     fgTile_ = t;
+    fgInversion_ = isInversion;
 }
 
 void TextTiles::foregroundVisible(bool visible) {
@@ -114,7 +115,7 @@ void TextTiles::drawText() {
             if (t.ch == 0)
                 continue;
 
-            renderTile(tx * tileW_, ty * tileH_, t);
+            renderTile(tx * tileW_, ty * tileH_, t, false);
         }
     }
 }
@@ -124,7 +125,8 @@ void TextTiles::drawCursor() {
         renderTile(
             fgX_ * tileW_,
             fgY_ * tileH_,
-            fgTile_
+            fgTile_,
+            true
         );
     }
 }
@@ -137,13 +139,13 @@ void TextTiles::render() {
     drawCursor();
 }
 
-void TextTiles::renderTile(int px, int py, const CharTile& t) {
-    const uint8_t* glyph =_font.getBitmapUnicode(t.ch);
+void TextTiles::renderTile(int px, int py, const CharTile& t, bool isForegroudTile) {
+    const uint8_t* glyph = _font.getBitmapUnicode(t.ch);
 
     if (!glyph) {
         // fallback символ
         glyph = _font.getBitmapUnicode('?');
-        if (!glyph) return; 
+        if (!glyph) return;
     }
 
     for (int y = 0; y < tileH_; y++) {
@@ -154,7 +156,13 @@ void TextTiles::renderTile(int px, int py, const CharTile& t) {
             bool bit = row & (1 << (7 - x));
 
             if (bit) {
-                dst[x] = t.color;
+                 if (isForegroudTile && fgInversion_) {
+                     // Инвертируем пиксель фона XOR'ом с цветом курсора
+                     // Это сохраняет цвет курсора и инвертирует яркость фона
+                     dst[x] = dst[x] ^ t.color;
+                 } else {
+                      dst[x] = t.color;
+                }
             } else if (!transparent_) {
                 dst[x] = 0; // black
             }

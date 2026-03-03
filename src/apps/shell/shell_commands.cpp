@@ -7,6 +7,7 @@
 #include "cmds/CmdRun.h"
 #include "apps/helloworld/helloworld.h"
 #include "apps/viewer/viewer.h"
+#include "apps/editor/editor.h"
 // #include "player/player.h"
 #include "AppManager.h"
 #include "sdcard.h"
@@ -59,6 +60,7 @@ static bool cmd_color(Shell& shell);
 static bool cmd_glyph(Shell& shell);
 static bool cmd_fs(Shell& shell);
 static bool cmd_view(Shell& shell);
+static bool cmd_edit(Shell& shell);
 
 /* =========================================================
  *  COMMAND TABLE
@@ -94,6 +96,7 @@ static const ShellCommand commands[] = {
     { "GLYPH", cmd_glyph, nullptr, "Show glyph bitmap for current font" },
     { "FS", cmd_fs, nullptr, "FS" },
     { "VIEW", cmd_view, nullptr, "View image" },
+    { "EDIT", cmd_edit, nullptr, "Text editor" },
     { "SDSPEED", nullptr, create_sd_speed, "Test speed of file read from sd" },
     { "PING", nullptr, create_ping, "Test log command" },
     { "LUA", nullptr, create_lua_exp, "Execute Lua expression" },
@@ -961,6 +964,39 @@ static bool cmd_view(Shell& shell) {
 
     shell.app().requestSwitch(
         new Viewer(path)
+    ); 
+
+    return true;
+}
+
+static bool cmd_edit(Shell& shell) {
+    auto& con = shell.console();
+    auto& cmd = shell.parsedCmd();
+
+    if (cmd.argc() < 2) {
+        con.setColor(COLOR_RED);
+        con.printLn("Usage: EDIT <path>");
+        con.useDefaultColor();
+        return false;
+    }
+
+    char path[MAX_PATH];
+    shell.resolvePath(cmd.argv(1), path);
+
+    if (!sdCheck(shell)) {
+        return false;
+    }
+
+    if (!SDCARD::fileExists(path)) {
+        con.setColor(COLOR_RED);
+        con.print("File not found: ");
+        con.printLn(path);
+        con.useDefaultColor();
+        return false;
+    }
+
+    shell.app().requestSwitch(
+        new Editor(path)
     ); 
 
     return true;

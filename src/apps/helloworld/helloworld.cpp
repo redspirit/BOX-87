@@ -25,8 +25,6 @@ bool HelloWorld::init() {
 void HelloWorld::update(float dt) {
     _time += dt;
 
-
-
     if (_time >= 20.0f) {
         requestExit();
     }
