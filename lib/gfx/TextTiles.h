@@ -5,6 +5,8 @@
 struct CharTile {
     uint16_t ch;
     uint8_t color;
+    bool isInversion : 1;
+    bool isForeground : 1;
 };
 
 class TextTiles {
@@ -21,7 +23,7 @@ public:
     bool setFontFile(const char* path, bool isSD);
 
     void drawTile(int x, int y, CharTile t);
-    void drawTileForeground(int x, int y, CharTile t, bool isInversion = false);
+    void drawTileForeground(int x, int y, CharTile t);
     void foregroundVisible(bool visible);
 
     void print(const char* text, int x, int y, uint8_t color);
@@ -29,7 +31,7 @@ public:
     void renderTileBitmap(int px, int py, const uint8_t* glyph);
 
     int gridWidth()  const { return gridW_; }
-    int gridHeight() const { return gridH_; }    
+    int gridHeight() const { return gridH_; }
     int tileWidth()  const { return tileW_; }
     int tileHeight() const { return tileH_; }
 
@@ -50,7 +52,6 @@ private:
     int fgX_ = 0;
     int fgY_ = 0;
     bool fgVisible_ = false;
-    bool fgInversion_ = false;
 
     bool transparent_ = true;
 
@@ -58,7 +59,7 @@ private:
         return tilemap_[y * gridW_ + x];
     }
 
-    void renderTile(int px, int py, const CharTile& t, bool isForegroudTile);
+    void renderTile(int px, int py, const CharTile& t);
     void drawText();
     void drawCursor();
 };

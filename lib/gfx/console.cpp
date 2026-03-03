@@ -233,7 +233,7 @@ void Console::show(int y1, int y2) {
     if (cursorEnabled_ && cursorPhase_) {
         tiles_.drawTileForeground(
             cx_, cy_,
-            { (uint8_t)cursorChar_, currentColor_ }
+            { (uint8_t)cursorChar_, currentColor_, false, false }
         );
         tiles_.foregroundVisible(true);
     } else {

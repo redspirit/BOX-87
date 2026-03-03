@@ -27,8 +27,6 @@ bool Editor::init() {
         return false;
     }
 
-
-
     parseLines();
     return true;
 }
@@ -183,13 +181,13 @@ void Editor::renderEditor() {
     // ===== Рамка =====
 
     for (int x = 0; x < w; x++) {
-        _tiles.drawTile(x, 0,        { 0x2500, frameColor });
-        _tiles.drawTile(x, h - 2,    { 0x2500, frameColor });
+        _tiles.drawTile(x, 0,        { 0x2500, frameColor, false, false });
+        _tiles.drawTile(x, h - 2,    { 0x2500, frameColor, false, false });
     }
 
     for (int y = 0; y < h - 1; y++) {
-        _tiles.drawTile(0,     y, { 0x2502, frameColor });
-        _tiles.drawTile(w - 1, y, { 0x2502, frameColor });
+        _tiles.drawTile(0,     y, { 0x2502, frameColor, false, false });
+        _tiles.drawTile(w - 1, y, { 0x2502, frameColor, false, false });
     }
 
     // ===== Текст =====
@@ -215,7 +213,7 @@ void Editor::renderEditor() {
             _tiles.drawTile(
                 col + 1,
                 row + 1,
-                { (uint8_t)line[charIndex], textColor }
+                { (uint8_t)line[charIndex], textColor, false, false }
             );
         }
     }
@@ -242,7 +240,7 @@ void Editor::renderEditor() {
         _tiles.drawTileForeground(
             cx,
             cy,
-            { 0x2588, cursorColor }, true
+            { 0x2588, cursorColor, true, true }
         );
     //     _tiles.foregroundVisible(true);
     // } else {
