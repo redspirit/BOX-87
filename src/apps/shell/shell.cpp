@@ -12,7 +12,6 @@
 Shell::Shell(AppManager& app)
     : _app(app),
       _console(),
-      _lua(), 
       _cmdParser() {
 }
 

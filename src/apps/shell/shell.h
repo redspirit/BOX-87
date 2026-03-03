@@ -4,7 +4,6 @@
 #include "console.h"
 #include "VGA/VGA.h"
 #include "sdcard.h"
-#include "shell_lua.h"
 #include "CmdParser.h"
 #include "IShellCommand.h"
 
@@ -30,7 +29,6 @@ class Shell : public ISubsystem {
 
         CmdParser& parsedCmd() { return _cmdParser; }
         Console& console() { return _console; }
-        ShellLua& lua() { return _lua; }
         AppManager& app() { return _app; }
         
         const char* cwd() const { return _cwd; }
@@ -45,7 +43,6 @@ class Shell : public ISubsystem {
 
         /* ==== DEVICES ==== */
         Console _console;
-        ShellLua _lua;
         CmdParser _cmdParser;
 
         bool _isEngLayout;

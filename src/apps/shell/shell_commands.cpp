@@ -3,6 +3,8 @@
 #include "shell.h"
 #include "cmds/CmdPing.h"
 #include "cmds/CmdSdSpeed.h"
+#include "cmds/CmdLuaExp.h"
+#include "cmds/CmdRun.h"
 #include "apps/helloworld/helloworld.h"
 #include "apps/viewer/viewer.h"
 // #include "player/player.h"
@@ -22,6 +24,12 @@ static IShellCommand* create_ping() {
 }
 static IShellCommand* create_sd_speed() {
     return new CmdSdSpeed();
+}
+static IShellCommand* create_lua_exp() {
+    return new CmdLuaExp();
+}
+static IShellCommand* create_run() {
+    return new CmdRun();
 }
 
 /* =========================================================
@@ -78,7 +86,6 @@ static const ShellCommand commands[] = {
     { "MKDIR", cmd_mkdir, nullptr, "Create directory" },
     { "WRITE",  cmd_write, nullptr, "Write text file or create empty" },
     { "APPEND", cmd_append, nullptr, "Append text to file" },
-    { "LUA", cmd_lua, nullptr, "Execute Lua expression" },
     { "MEM", cmd_mem, nullptr, "Show memory info" },
     { "HW", cmd_hw, nullptr, "Start Hello World application" },
     { "PLAY", cmd_play, nullptr, "Play media file" },
@@ -89,6 +96,8 @@ static const ShellCommand commands[] = {
     { "VIEW", cmd_view, nullptr, "View image" },
     { "SDSPEED", nullptr, create_sd_speed, "Test speed of file read from sd" },
     { "PING", nullptr, create_ping, "Test log command" },
+    { "LUA", nullptr, create_lua_exp, "Execute Lua expression" },
+    { "RUN", nullptr, create_run, "Run lua script" },
 };
 
 static const int commandCount = sizeof(commands) / sizeof(commands[0]);
@@ -615,34 +624,6 @@ static bool cmd_mem(Shell& shell) {
         con.printLn("");
         con.printLn("PSRAM: NOT PRESENT");
     }    
-
-    return true;
-}
-
-static bool cmd_lua(Shell& shell) {
-    auto& con = shell.console();
-    auto& cmd = shell.parsedCmd();
-
-    if (cmd.argc() < 2) {
-        con.setColor(COLOR_RED);
-        con.printLn("Usage: LUA <expression>");
-        con.useDefaultColor();
-        return false;
-    }
-
-    // всё после LUA — выражение
-    const char* expr = cmd.argv(1);
-
-    char out[128];
-
-    if (!shell.lua().runExpression(expr, out, sizeof(out))) {
-        con.setColor(COLOR_RED);
-        con.printLn(out[0] ? out : "Lua error");
-        con.useDefaultColor();
-        return false;
-    }
-
-    con.printLn(out);
 
     return true;
 }
