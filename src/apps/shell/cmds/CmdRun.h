@@ -26,6 +26,7 @@ class CmdRun : public IShellCommand {
         uint8_t _luaBuffer[LUA_READ_BUFFER];
         static const char* luaSDReader(lua_State* L, void* data, size_t* size);
         
+        void pushArguments();
         bool runFile(const char* path);
         void registerBindings();
         bool callMain();

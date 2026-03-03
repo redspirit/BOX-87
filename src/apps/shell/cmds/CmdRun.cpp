@@ -29,17 +29,12 @@ static int lua_console_setcolorrgb(lua_State* L) {
     Shell* shell = static_cast<Shell*>(lua_touserdata(L, lua_upvalueindex(1)));
     if (!shell) return 0;
 
-    // 2. Проверяем, что передано ровно 3 аргумента (или используй lua_gettop(L) < 3 для проверки минимума)
-    // luaL_argcheck выбрасывает ошибку, если условие ложно
     luaL_argcheck(L, lua_gettop(L) >= 3, 1, "setColorRGB requires 3 arguments (r, g, b)");
 
-    // 3. Проверяем типы аргументов
-    // luaL_checkinteger автоматически выдаст ошибку, если аргумент нельзя привести к числу
     int r = (int)luaL_checkinteger(L, 1);
     int g = (int)luaL_checkinteger(L, 2);
     int b = (int)luaL_checkinteger(L, 3);
 
-    // Дополнительная валидация (если r,g,b должны быть в диапазоне 0-255)
     if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
         return luaL_error(L, "Color components must be in range 0-255");
     }
@@ -173,6 +168,25 @@ bool CmdRun::runFile(const char* path) {
     // return callMain();
 };
 
+void CmdRun::pushArguments() {
+    auto& cmd = _shell->parsedCmd();
+    lua_newtable(L); // создаем таблицу arg
+    int argc = cmd.argc();
+
+    for (int i = 1; i < argc; ++i) {
+        const char* a = cmd.argv(i);
+        if (!a) a = "";
+
+        lua_pushstring(L, a);
+        lua_rawseti(L, -2, i - 1); 
+        // i-1 потому что:
+        // argv(1) = имя файла → arg[0]
+        // argv(2) → arg[1]
+    }
+
+    lua_setglobal(L, "arg");
+}
+
 void CmdRun::start(Shell& shell) {
     _shell = &shell;
     auto& con = shell.console();
@@ -198,8 +212,8 @@ void CmdRun::start(Shell& shell) {
     }
 
     luaL_openlibs(L);
-
     registerBindings();
+    pushArguments();
 
     if(!runFile(path)) {
         con.setColor(COLOR_RED);
@@ -207,7 +221,6 @@ void CmdRun::start(Shell& shell) {
         con.useDefaultColor();
         _finished = true;
     }
-
 }
 
 void CmdRun::tick(Shell& shell) {
