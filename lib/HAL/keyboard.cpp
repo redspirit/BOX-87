@@ -355,9 +355,18 @@ namespace KEYBOARD {
         if (!readKey(ev) || !ev.pressed)
             return false;
 
+        // Игнорируем модификаторы и навигационные клавиши
         if (ev.key == SHIFT_LEFT || ev.key == SHIFT_RIGHT ||
             ev.key == CTRL_LEFT  || ev.key == CTRL_RIGHT  ||
-            ev.key == ALT_LEFT   || ev.key == ALT_RIGHT)
+            ev.key == ALT_LEFT   || ev.key == ALT_RIGHT   ||
+            ev.key == UP         || ev.key == DOWN        ||
+            ev.key == LEFT       || ev.key == RIGHT       ||
+            ev.key == PAGEUP     || ev.key == PAGEDOWN    ||
+            ev.key == HOME       || ev.key == END         ||
+            ev.key == DELETE     || ev.key == ENTER       ||
+            ev.key == ESC        || ev.key == BACKSPACE   ||
+            ev.key == TAB        || ev.key == CAPS        ||
+            ev.key == PRINT_SCREEN)
             return false;
 
         KeyChar kc = keyMap_[ev.key];

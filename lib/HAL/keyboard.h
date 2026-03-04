@@ -56,6 +56,7 @@ namespace KEYBOARD {
         RIGHT = 0x174, LEFT = 0x16B, UP = 0x175, DOWN = 0x172,
         PAGEUP = 0x17D, PAGEDOWN = 0x17A,
         HOME = 0x16C, END = 0x169,
+        DELETE = 0x171,  // Расширенный скан-код (E0 71)
 
         PRINT_SCREEN = 0x17C,
     };

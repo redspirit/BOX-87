@@ -41,6 +41,12 @@ private:
     void handleInput(float dt);
     void ensureCursorVisible();
     void renderEditor();
+    
+    // Вставка/удаление символов
+    void insertChar(uint16_t ch);
+    void insertNewline();
+    void deleteCharBack();
+    void deleteCharForward();
 
 private:
     uint32_t _frameTimeMs = 16;
@@ -67,4 +73,5 @@ private:
     uint16_t _scrollY = 0;
     
     KeyRepeat keyRepeat_;
+    bool _isEngLayout = true;  // по умолчанию английская раскладка
 };

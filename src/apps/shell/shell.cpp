@@ -166,7 +166,7 @@ void Shell::update(float dt) {
         } else {
             // печатаем в консоль
             onChar(c);
-        }            
+        }
     }
 
     // --- Если выполняется long команда ---
