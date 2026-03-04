@@ -5,8 +5,9 @@
 struct CharTile {
     uint16_t ch;
     uint8_t color;
+    uint8_t bgColor;
     bool isInversion : 1;
-    bool isForeground : 1;
+    bool isTransparent : 1;
 };
 
 class TextTiles {
@@ -26,7 +27,7 @@ public:
     void drawTileForeground(int x, int y, CharTile t);
     void foregroundVisible(bool visible);
 
-    void print(const char* text, int x, int y, uint8_t color);
+    void print(const char* text, int x, int y, uint8_t color, uint8_t bgColor = 0, bool isInversion = false, bool isTransparent = true);
     void render();
     void renderTileBitmap(int px, int py, const uint8_t* glyph);
 

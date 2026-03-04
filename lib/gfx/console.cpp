@@ -67,6 +67,9 @@ void Console::clearLine(int row) {
         auto& t = cell(x, row);
         t.ch = ' ';
         t.color = defaultColor_;
+        t.bgColor = 0;
+        t.isInversion = false;
+        t.isTransparent = true;
     }
 }
 
@@ -124,6 +127,9 @@ void Console::printRawChar(uint16_t c, uint16_t repeat) {
         auto& t = cell(cx_, row);
         t.ch = c;
         t.color = currentColor_;
+        t.bgColor = 0;
+        t.isInversion = false;
+        t.isTransparent = true;
         cx_++;
     }
 }
@@ -155,10 +161,13 @@ void Console::print(const char* text) {
 
         int row = (head_ + cy_) % height_;
         auto& t = cell(cx_, row);
-        
+
         t.ch = code;
         t.color = currentColor_;
-        
+        t.bgColor = 0;
+        t.isInversion = false;
+        t.isTransparent = true;
+
         cx_++;
     }
 }
@@ -186,6 +195,9 @@ void Console::clearCharAt(int x, int y) {
     auto& t = cell(x, row);
     t.ch = ' ';
     t.color = defaultColor_;
+    t.bgColor = 0;
+    t.isInversion = false;
+    t.isTransparent = true;
 }
 
 void Console::setCursor(int x, int y) {
@@ -233,7 +245,7 @@ void Console::show(int y1, int y2) {
     if (cursorEnabled_ && cursorPhase_) {
         tiles_.drawTileForeground(
             cx_, cy_,
-            { (uint8_t)cursorChar_, currentColor_, false, false }
+            { (uint8_t)cursorChar_, currentColor_, 0, false, true }
         );
         tiles_.foregroundVisible(true);
     } else {

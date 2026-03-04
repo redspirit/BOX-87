@@ -176,18 +176,38 @@ void Editor::renderEditor() {
     uint8_t frameColor  = getColorByPalette(COLOR_CYAN);
     uint8_t textColor   = getColorByPalette(COLOR_WHITE);
     uint8_t statusColor = getColorByPalette(COLOR_YELLOW);
-    uint8_t cursorColor = getColorByPalette(COLOR_WHITE);
+    uint8_t cursorColor = getColorByPalette(COLOR_YELLOW);
 
-    // ===== Рамка =====
+    // ===== Заголовок (в стиле nano) =====
 
+    // Заполняем всю строку пробелами: цвет=frameColor, фон=0, прозрачный=true
     for (int x = 0; x < w; x++) {
-        _tiles.drawTile(x, 0,        { 0x2500, frameColor, false, false });
-        _tiles.drawTile(x, h - 2,    { 0x2500, frameColor, false, false });
+        _tiles.drawTile(x, 0, { (uint8_t)' ', frameColor, 0, true, false });
+    }
+    
+    // Теперь рисуем текст заголовка по центру с инверсией
+    // color=frameColor, bgColor=0, isInversion=true
+    // При инверсии: пиксели символа=bgColor(0)=чёрный, фон=color(frameColor)
+    char title[w];
+    snprintf(title, sizeof(title), " BOX87 TEXT EDITOR : %s ", _path);
+
+    int titleLen = strlen(title);
+    int titleStartX = (w - titleLen) / 2;
+    if (titleStartX < 0) titleStartX = 0;
+
+    for (int i = 0; i < titleLen && titleStartX + i < w; i++) {
+        _tiles.drawTile(titleStartX + i, 0, { (uint8_t)title[i], frameColor, 0, true, false });
     }
 
-    for (int y = 0; y < h - 1; y++) {
-        _tiles.drawTile(0,     y, { 0x2502, frameColor, false, false });
-        _tiles.drawTile(w - 1, y, { 0x2502, frameColor, false, false });
+    // ===== Нижняя рамка =====
+
+    for (int x = 0; x < w; x++) {
+        _tiles.drawTile(x, h - 2,    { 0x2500, frameColor, 0, false, true });
+    }
+
+    for (int y = 1; y < h - 1; y++) {
+        _tiles.drawTile(0,     y, { 0x2502, frameColor, 0, false, true });
+        _tiles.drawTile(w - 1, y, { 0x2502, frameColor, 0, false, true });
     }
 
     // ===== Текст =====
@@ -213,7 +233,7 @@ void Editor::renderEditor() {
             _tiles.drawTile(
                 col + 1,
                 row + 1,
-                { (uint8_t)line[charIndex], textColor, false, false }
+                { (uint8_t)line[charIndex], textColor, 0, false, true }
             );
         }
     }
@@ -227,25 +247,19 @@ void Editor::renderEditor() {
              _cursor.line + 1,
              _cursor.column + 1);
 
-    _tiles.print(status, 1, h - 1, statusColor);
+    _tiles.print(status, 1, h - 1, statusColor, 0, false, true);
 
     // ===== Курсор =====
 
     int cx = _cursor.column - _scrollX + 1;
     int cy = _cursor.line   - _scrollY + 1;
 
-    // if (cx >= 1 && cx < w - 1 &&
-    //     cy >= 1 && cy < h - 1) {
+    _tiles.drawTileForeground(
+        cx,
+        cy,
+        { 0x2588, cursorColor, 0, false, true }
+    );
 
-        _tiles.drawTileForeground(
-            cx,
-            cy,
-            { 0x2588, cursorColor, true, true }
-        );
-    //     _tiles.foregroundVisible(true);
-    // } else {
-    //     _tiles.foregroundVisible(true);
-    // }
 }
 
 // ============================================================

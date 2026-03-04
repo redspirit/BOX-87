@@ -2,7 +2,7 @@
 #include "ISubsystem.h"
 #include "TextTiles.h"
 
-#define MAX_PATH 128
+#define MAX_PATH 32
 
 class Viewer : public ISubsystem {
     public:

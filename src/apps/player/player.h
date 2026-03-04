@@ -4,7 +4,7 @@
 #include "SdReadBuffer.h"
 #include "Audio.h"
 
-#define MAX_PATH 128
+#define MAX_PATH 32
 
 class Player : public ISubsystem {
     public:

@@ -85,7 +85,6 @@ void TextTiles::drawTile(int x, int y, CharTile t) {
 void TextTiles::drawTileForeground(int x, int y, CharTile t) {
     fgX_ = x;
     fgY_ = y;
-    t.isForeground = true;
     fgTile_ = t;
 }
 
@@ -93,7 +92,7 @@ void TextTiles::foregroundVisible(bool visible) {
     fgVisible_ = visible;
 }
 
-void TextTiles::print(const char* text, int x, int y, uint8_t color) {
+void TextTiles::print(const char* text, int x, int y, uint8_t color, uint8_t bgColor, bool isInversion, bool isTransparent) {
     if (y < 0 || y >= gridH_)
         return;
 
@@ -103,6 +102,9 @@ void TextTiles::print(const char* text, int x, int y, uint8_t color) {
         CharTile& t = tileAt(cx, y);
         t.ch = (uint8_t)*text++;
         t.color = color;
+        t.bgColor = bgColor;
+        t.isInversion = isInversion;
+        t.isTransparent = isTransparent;
         cx++;
     }
 }
@@ -155,23 +157,32 @@ void TextTiles::renderTile(int px, int py, const CharTile& t) {
             bool bit = row & (1 << (7 - x));
 
             if (bit) {
-                if (t.isForeground && t.isInversion) {
-                    // Инвертируем пиксель фона XOR'ом с цветом курсора
-                    dst[x] = dst[x] ^ t.color;
+                // Пиксель символа (foreground)
+                if (t.isInversion) {
+                    // При инверсии: пиксели символа и фона меняются местами
+                    dst[x] = t.bgColor;
                 } else {
                     dst[x] = t.color;
                 }
-            } else if (!transparent_) {
-                dst[x] = 0; // black
+            } else {
+                // Фоновый пиксель
+                if (!t.isTransparent) {
+                    if (t.isInversion) {
+                        // При инверсии: фон становится цветом символа
+                        dst[x] = t.color;
+                    } else {
+                        dst[x] = t.bgColor;
+                    }
+                }
+                // если isTransparent == true → пропускаем (остаётся что было в буфере)
             }
-            // если transparent_ == true и bit == 0 → ничего не делаем
         }
     }
 }
 
 void TextTiles::renderTileBitmap(int px, int py, const uint8_t* glyph) {
     if (!glyph) {
-        return; 
+        return;
     }
 
     for (int y = 0; y < tileH_; y++) {

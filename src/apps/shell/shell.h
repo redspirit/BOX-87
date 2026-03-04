@@ -9,7 +9,7 @@
 
 #define SHELL_CMD_MAX     64
 #define MAX_SEGMENTS      16
-#define MAX_PATH          128
+#define MAX_PATH          32
 #define PROMPT            "> "
 #define PROMPT_LEN        2
 
