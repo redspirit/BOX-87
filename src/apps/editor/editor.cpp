@@ -19,7 +19,6 @@ bool Editor::init() {
 
     paletteInit();
     _tiles.init();
-    _tiles.foregroundVisible(true);
 
     memset(_buffer, 0, sizeof(_buffer));
 
@@ -28,6 +27,7 @@ bool Editor::init() {
     }
 
     parseLines();
+    
     return true;
 }
 
@@ -176,19 +176,18 @@ void Editor::renderEditor() {
     uint8_t frameColor  = getColorByPalette(COLOR_CYAN);
     uint8_t textColor   = getColorByPalette(COLOR_WHITE);
     uint8_t statusColor = getColorByPalette(COLOR_YELLOW);
-    uint8_t cursorColor = getColorByPalette(COLOR_YELLOW);
 
     // ===== Заголовок (в стиле nano) =====
 
     // Заполняем всю строку пробелами: цвет=frameColor, фон=0, прозрачный=true
     for (int x = 0; x < w; x++) {
-        _tiles.drawTile(x, 0, { (uint8_t)' ', frameColor, 0, true, false });
+        _tiles.drawTile(x, 0, { (uint8_t)' ', frameColor, 0, false, true });
     }
-    
+
     // Теперь рисуем текст заголовка по центру с инверсией
     // color=frameColor, bgColor=0, isInversion=true
     // При инверсии: пиксели символа=bgColor(0)=чёрный, фон=color(frameColor)
-    char title[w];
+    char title[128];
     snprintf(title, sizeof(title), " BOX87 TEXT EDITOR : %s ", _path);
 
     int titleLen = strlen(title);
@@ -230,10 +229,21 @@ void Editor::renderEditor() {
             if (charIndex >= len)
                 break;
 
+            int tileX = col + 1;
+            int tileY = row + 1;
+            
+            // Проверяем, это позиция курсора?
+            int cursorX = _cursor.column - _scrollX + 1;
+            int cursorY = _cursor.line   - _scrollY + 1;
+            
+            uint8_t bgColor = (tileX == cursorX && tileY == cursorY) 
+                ? getColorByPalette(COLOR_YELLOW) 
+                : 0;
+
             _tiles.drawTile(
-                col + 1,
-                row + 1,
-                { (uint8_t)line[charIndex], textColor, 0, false, true }
+                tileX,
+                tileY,
+                { (uint8_t)line[charIndex], textColor, bgColor, false, false }
             );
         }
     }
@@ -248,18 +258,6 @@ void Editor::renderEditor() {
              _cursor.column + 1);
 
     _tiles.print(status, 1, h - 1, statusColor, 0, false, true);
-
-    // ===== Курсор =====
-
-    int cx = _cursor.column - _scrollX + 1;
-    int cy = _cursor.line   - _scrollY + 1;
-
-    _tiles.drawTileForeground(
-        cx,
-        cy,
-        { 0x2588, cursorColor, 0, false, true }
-    );
-
 }
 
 // ============================================================
