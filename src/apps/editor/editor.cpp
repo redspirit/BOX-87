@@ -222,28 +222,30 @@ void Editor::renderEditor() {
 
         const char* line = &_buffer[_lineOffsets[lineIndex]];
         int len = strlen(line);
+        
+        // Вычисляем позицию курсора
+        int cursorX = _cursor.column - _scrollX + 1;
+        int cursorY = _cursor.line   - _scrollY + 1;
 
         for (int col = 0; col < viewW; col++) {
 
             int charIndex = _scrollX + col;
-            if (charIndex >= len)
-                break;
-
             int tileX = col + 1;
             int tileY = row + 1;
             
             // Проверяем, это позиция курсора?
-            int cursorX = _cursor.column - _scrollX + 1;
-            int cursorY = _cursor.line   - _scrollY + 1;
+            bool isCursor = (tileX == cursorX && tileY == cursorY);
             
-            uint8_t bgColor = (tileX == cursorX && tileY == cursorY) 
-                ? getColorByPalette(COLOR_YELLOW) 
-                : 0;
+            uint8_t bgColor = isCursor ? getColorByPalette(COLOR_YELLOW) : 0;
+            uint8_t charColor = isCursor ? 0 : textColor;
+            
+            // Если есть символ — рисуем его, иначе — пробел
+            uint8_t ch = (charIndex < len) ? (uint8_t)line[charIndex] : (uint8_t)' ';
 
             _tiles.drawTile(
                 tileX,
                 tileY,
-                { (uint8_t)line[charIndex], textColor, bgColor, false, false }
+                { ch, charColor, bgColor, false, false }
             );
         }
     }
