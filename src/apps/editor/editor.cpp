@@ -196,6 +196,17 @@ void Editor::handleInput(float dt) {
         }
     }
 
+    // ===== HOME / END =====
+
+    if (keyRepeat_.check(KEYBOARD::HOME, dt)) {
+        _cursor.column = 0;
+    }
+
+    if (keyRepeat_.check(KEYBOARD::END, dt)) {
+        const char* line = &_buffer[_lineOffsets[_cursor.line]];
+        _cursor.column = UTF8::length(line);
+    }
+
     ensureCursorVisible();
 }
 
