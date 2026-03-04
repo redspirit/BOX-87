@@ -155,7 +155,7 @@ void Editor::handleInput() {
 void Editor::ensureCursorVisible() {
 
     const int viewW = _tiles.gridWidth()  - 2;
-    const int viewH = _tiles.gridHeight() - 2;
+    const int viewH = _tiles.gridHeight() - 3;  // Как в renderEditor()
 
     // Вертикальный scroll
     if (_cursor.line < _scrollY)
@@ -229,7 +229,7 @@ void Editor::renderEditor() {
 
     // ===== Текст =====
 
-    int viewH = h - 2;
+    int viewH = h - 3;  // Не доходим до нижней рамки
     int viewW = w - 2;
 
     for (int row = 0; row < viewH; row++) {
