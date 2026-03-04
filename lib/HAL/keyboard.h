@@ -54,6 +54,7 @@ namespace KEYBOARD {
         B = 0x32, N = 0x31, M = 0x3A,
 
         RIGHT = 0x174, LEFT = 0x16B, UP = 0x175, DOWN = 0x172,
+        PAGEUP = 0x17D, PAGEDOWN = 0x17A,
 
         PRINT_SCREEN = 0x17C,
     };

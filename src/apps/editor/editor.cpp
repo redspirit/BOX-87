@@ -176,23 +176,25 @@ void Editor::handleInput(float dt) {
 
     // ===== Быстрая прокрутка =====
 
-    // if (KEYBOARD::isPressed(KEYBOARD::PAGEUP)) {
+    if (keyRepeat_.check(KEYBOARD::PAGEUP, dt)) {
+        uint16_t step = _tiles.gridHeight() - 3;
+        
+        if (_cursor.line > step) {
+            _cursor.line -= step;
+        } else {
+            _cursor.line = 0;
+        }
+    }
 
-    //     uint16_t step = _tiles.gridHeight() - 2;
-    //     if (_cursor.line > step)
-    //         _cursor.line -= step;
-    //     else
-    //         _cursor.line = 0;
-    // }
-
-    // if (KEYBOARD::isPressed(KEYBOARD::PAGEDOWN)) {
-
-    //     uint16_t step = _tiles.gridHeight() - 2;
-    //     if (_cursor.line + step < _lineCount)
-    //         _cursor.line += step;
-    //     else
-    //         _cursor.line = _lineCount - 1;
-    // }
+    if (keyRepeat_.check(KEYBOARD::PAGEDOWN, dt)) {
+        uint16_t step = _tiles.gridHeight() - 3;
+        
+        if (_cursor.line + step < _lineCount) {
+            _cursor.line += step;
+        } else {
+            _cursor.line = _lineCount - 1;
+        }
+    }
 
     ensureCursorVisible();
 }
@@ -363,23 +365,30 @@ void Editor::renderEditor() {
 
     // ===== Статус =====
 
-    // Подсчитываем общее количество символов (Unicode)
+    // Подсчитываем общее количество символов (Unicode) и байт
     uint32_t totalChars = 0;
+    uint32_t totalBytes = 0;
+    
     for (uint16_t i = 0; i < _lineCount; i++) {
         const char* line = &_buffer[_lineOffsets[i]];
+        uint16_t lineLen = strlen(line);
+        totalBytes += lineLen;
         totalChars += UTF8::length(line);
-        if (i < _lineCount - 1) totalChars++;  // символ newline
+        
+        // Добавляем символ newline (кроме последней строки)
+        if (i < _lineCount - 1) {
+            totalBytes++;    // 1 байт для \n
+            totalChars++;    // 1 символ newline
+        }
     }
-    
-    uint32_t fileSize = strlen(_buffer);
-    
+
     // Левая часть статус-бара
     char statusLeft[64];
     snprintf(statusLeft, sizeof(statusLeft),
              " Ln:%d Col:%d / %lu bytes / %lu chars ",
              _cursor.line + 1,
              _cursor.column + 1,
-             fileSize,
+             totalBytes,
              totalChars);
     
     // Правая часть статус-бара
