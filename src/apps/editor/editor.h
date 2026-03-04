@@ -5,6 +5,28 @@
 
 #define MAX_PATH 32
 
+// Класс для обработки автоповтора клавиш
+class KeyRepeat {
+public:
+    // initialDelay - задержка перед первым повтором (сек)
+    // repeatDelay - задержка между повторами (сек)
+    KeyRepeat(float initialDelay = 0.5f, float repeatDelay = 0.05f);
+    
+    // Сброс состояния
+    void reset();
+    
+    // Проверка клавиши с автоповтором
+    // Возвращает true при первом нажатии и при автоповторе
+    bool check(uint16_t key, float dt);
+    
+private:
+    uint16_t lastKey_ = 0;
+    float holdTime_ = 0.0f;
+    float initialDelay_;
+    float repeatDelay_;
+    bool waitingForRepeat_ = false;
+};
+
 class Editor : public ISubsystem {
 public:
     explicit Editor(const char* path);
@@ -16,11 +38,13 @@ public:
 
 private:
     void parseLines();
-    void handleInput();
+    void handleInput(float dt);
     void ensureCursorVisible();
     void renderEditor();
 
 private:
+    uint32_t _frameTimeMs = 16;
+    
     // ===== Константы =====
     static constexpr size_t MAX_FILE_SIZE = 100 * 1024; // 100KB
     static constexpr size_t MAX_LINES     = 4096;
@@ -41,5 +65,6 @@ private:
 
     uint16_t _scrollX = 0;
     uint16_t _scrollY = 0;
-
+    
+    KeyRepeat keyRepeat_;
 };

@@ -8,7 +8,56 @@
 #include "LOG.h"
 #include "UTF8.h"
 
-Editor::Editor(const char* fullPath) : _tiles() {
+// ============================================================
+// KeyRepeat
+// ============================================================
+
+KeyRepeat::KeyRepeat(float initialDelay, float repeatDelay)
+    : initialDelay_(initialDelay)
+    , repeatDelay_(repeatDelay)
+{
+}
+
+void KeyRepeat::reset() {
+    lastKey_ = 0;
+    holdTime_ = 0.0f;
+    waitingForRepeat_ = false;
+}
+
+bool KeyRepeat::check(uint16_t key, float dt) {
+    if (KEYBOARD::isJustPressed(key)) {
+        // Новое нажатие
+        lastKey_ = key;
+        holdTime_ = 0.0f;
+        waitingForRepeat_ = true;
+        return true;
+    }
+    
+    if (KEYBOARD::isPressed(key) && key == lastKey_) {
+        // Клавиша удерживается
+        holdTime_ += dt;
+        
+        if (waitingForRepeat_ && holdTime_ >= initialDelay_) {
+            // Первый повтор после initialDelay
+            waitingForRepeat_ = false;
+            holdTime_ = 0.0f;
+            return true;
+        }
+        
+        if (!waitingForRepeat_ && holdTime_ >= repeatDelay_) {
+            // Последующие повторы
+            holdTime_ = 0.0f;
+            return true;
+        }
+    } else if (key == lastKey_) {
+        // Клавиша отпущена
+        reset();
+    }
+    
+    return false;
+}
+
+Editor::Editor(const char* fullPath) : _tiles(), keyRepeat_(0.5f, 0.05f) {
     strncpy(_path, fullPath, MAX_PATH);
     _path[MAX_PATH - 1] = 0;
 }
@@ -71,15 +120,15 @@ void Editor::parseLines() {
 // Ввод
 // ============================================================
 
-void Editor::handleInput() {
+void Editor::handleInput(float dt) {
 
-    if (KEYBOARD::isJustPressed(KEYBOARD::ESC)) {
+    if (keyRepeat_.check(KEYBOARD::ESC, dt)) {
         requestExit();
     }
 
     // ===== Навигация =====
 
-    if (KEYBOARD::isJustPressed(KEYBOARD::UP)) {
+    if (keyRepeat_.check(KEYBOARD::UP, dt)) {
         if (_cursor.line > 0) {
             _cursor.line--;
             // Ограничиваем позицию курсора длиной строки (в Unicode символах)
@@ -90,7 +139,7 @@ void Editor::handleInput() {
         }
     }
 
-    if (KEYBOARD::isJustPressed(KEYBOARD::DOWN)) {
+    if (keyRepeat_.check(KEYBOARD::DOWN, dt)) {
         if (_cursor.line + 1 < _lineCount) {
             _cursor.line++;
             // Ограничиваем позицию курсора длиной строки (в Unicode символах)
@@ -101,7 +150,7 @@ void Editor::handleInput() {
         }
     }
 
-    if (KEYBOARD::isJustPressed(KEYBOARD::LEFT)) {
+    if (keyRepeat_.check(KEYBOARD::LEFT, dt)) {
         if (_cursor.column > 0) {
             _cursor.column--;
         }
@@ -112,7 +161,7 @@ void Editor::handleInput() {
         }
     }
 
-    if (KEYBOARD::isJustPressed(KEYBOARD::RIGHT)) {
+    if (keyRepeat_.check(KEYBOARD::RIGHT, dt)) {
         const char* line = &_buffer[_lineOffsets[_cursor.line]];
         uint16_t len = UTF8::length(line);
 
@@ -203,7 +252,7 @@ void Editor::renderEditor() {
     }
 
     // Боковые границы
-    for (int y = 1; y < h - 2; y++) {
+    for (int y = 1; y < h; y++) {
         _tiles.drawTile(0,     y, { 0x2502, frameColor, 0, false, true });
         _tiles.drawTile(w - 1, y, { 0x2502, frameColor, 0, false, true });
     }
@@ -314,14 +363,41 @@ void Editor::renderEditor() {
 
     // ===== Статус =====
 
-    char status[128];
-    snprintf(status, sizeof(status),
-             " %s | Ln:%d Col:%d ",
-             _path,
+    // Подсчитываем общее количество символов (Unicode)
+    uint32_t totalChars = 0;
+    for (uint16_t i = 0; i < _lineCount; i++) {
+        const char* line = &_buffer[_lineOffsets[i]];
+        totalChars += UTF8::length(line);
+        if (i < _lineCount - 1) totalChars++;  // символ newline
+    }
+    
+    uint32_t fileSize = strlen(_buffer);
+    
+    // Левая часть статус-бара
+    char statusLeft[64];
+    snprintf(statusLeft, sizeof(statusLeft),
+             " Ln:%d Col:%d / %lu bytes / %lu chars ",
              _cursor.line + 1,
-             _cursor.column + 1);
-
-    _tiles.print(status, 1, h - 1, statusColor, 0, false, true);
+             _cursor.column + 1,
+             fileSize,
+             totalChars);
+    
+    // Правая часть статус-бара
+    const char* statusRight = "Exit(Esc) Save(Ctrl+S)";
+    
+    // Вычисляем позицию для правой части
+    int statusWidth = w - 2;
+    int leftLen = strlen(statusLeft);
+    int rightLen = strlen(statusRight);
+    int rightStartX = statusWidth - rightLen;
+    
+    // Рисуем левую часть
+    _tiles.print(statusLeft, 1, h - 1, statusColor, 0, false, true);
+    
+    // Рисуем правую часть
+    if (rightStartX > leftLen) {
+        _tiles.print(statusRight, rightStartX, h - 1, statusColor, 0, false, true);
+    }
 }
 
 // ============================================================
@@ -329,7 +405,7 @@ void Editor::renderEditor() {
 // ============================================================
 
 void Editor::update(float dt) {
-    handleInput();
+    handleInput(dt);
 
     VGA::clear(0);
     renderEditor();
