@@ -6,6 +6,7 @@
 #include "VGA/VGA.h"
 #include "sdcard.h"
 #include "LOG.h"
+#include "UTF8.h"
 
 Editor::Editor(const char* fullPath) : _tiles() {
     strncpy(_path, fullPath, MAX_PATH);
@@ -81,9 +82,9 @@ void Editor::handleInput() {
     if (KEYBOARD::isJustPressed(KEYBOARD::UP)) {
         if (_cursor.line > 0) {
             _cursor.line--;
-            // Ограничиваем позицию курсора длиной строки
+            // Ограничиваем позицию курсора длиной строки (в Unicode символах)
             const char* line = &_buffer[_lineOffsets[_cursor.line]];
-            uint16_t len = strlen(line);
+            uint16_t len = UTF8::length(line);
             if (_cursor.column > len)
                 _cursor.column = len;
         }
@@ -92,29 +93,28 @@ void Editor::handleInput() {
     if (KEYBOARD::isJustPressed(KEYBOARD::DOWN)) {
         if (_cursor.line + 1 < _lineCount) {
             _cursor.line++;
-            // Ограничиваем позицию курсора длиной строки
+            // Ограничиваем позицию курсора длиной строки (в Unicode символах)
             const char* line = &_buffer[_lineOffsets[_cursor.line]];
-            uint16_t len = strlen(line);
+            uint16_t len = UTF8::length(line);
             if (_cursor.column > len)
                 _cursor.column = len;
         }
     }
 
     if (KEYBOARD::isJustPressed(KEYBOARD::LEFT)) {
-
         if (_cursor.column > 0) {
             _cursor.column--;
         }
         else if (_cursor.line > 0) {
             _cursor.line--;
             const char* prevLine = &_buffer[_lineOffsets[_cursor.line]];
-            _cursor.column = strlen(prevLine);
+            _cursor.column = UTF8::length(prevLine);
         }
     }
 
     if (KEYBOARD::isJustPressed(KEYBOARD::RIGHT)) {
         const char* line = &_buffer[_lineOffsets[_cursor.line]];
-        uint16_t len = strlen(line);
+        uint16_t len = UTF8::length(line);
 
         if (_cursor.column < len) {
             _cursor.column++;
@@ -224,7 +224,7 @@ void Editor::renderEditor() {
 
     // Рисуем текст заголовка с инверсией
     for (int i = 0; i < titleLen && titleStartX + i < w; i++) {
-        _tiles.drawTile(titleStartX + i, 0, { title[i], frameColor, 0, true, false });
+        _tiles.drawTile(titleStartX + i, 0, { (uint16_t)title[i], frameColor, 0, true, false });
     }
 
     // ===== Текст =====
@@ -239,32 +239,48 @@ void Editor::renderEditor() {
             break;
 
         const char* line = &_buffer[_lineOffsets[lineIndex]];
-        int len = strlen(line);
-
+        
         // Вычисляем позицию курсора
         int cursorX = _cursor.column - _scrollX + 1;
         int cursorY = _cursor.line   - _scrollY + 1;
 
-        for (int col = 0; col < viewW; col++) {
-
-            int charIndex = _scrollX + col;
-            int tileX = col + 1;
-            int tileY = row + 1;
-
-            // Проверяем, это позиция курсора?
-            bool isCursor = (tileX == cursorX && tileY == cursorY);
-
-            uint8_t bgColor = isCursor ? getColorByPalette(COLOR_YELLOW) : 0;
-            uint8_t charColor = isCursor ? 0 : textColor;
-
-            // Если есть символ — рисуем его, иначе — пробел
-            uint8_t ch = (charIndex < len) ? (uint8_t)line[charIndex] : (uint8_t)' ';
-
-            _tiles.drawTile(
-                tileX,
-                tileY,
-                { ch, charColor, bgColor, false, false }
-            );
+        // Декодируем UTF-8 символы и рисуем их
+        const char* ptr = line;
+        int col = 0;  // визуальная колонка (Unicode символы)
+        
+        while (col < viewW + _scrollX) {
+            uint16_t code;
+            ptr = UTF8::decode(ptr, code);
+            
+            // Конец строки
+            if (code == 0) {
+                // Рисуем пробелы до конца строки
+                for (int restCol = col; restCol < viewW + _scrollX; restCol++) {
+                    int tileX = restCol - _scrollX + 1;
+                    int tileY = row + 1;
+                    
+                    bool isCursor = (tileX == cursorX && tileY == cursorY);
+                    uint8_t bgColor = isCursor ? getColorByPalette(COLOR_YELLOW) : 0;
+                    uint8_t charColor = isCursor ? 0 : textColor;
+                    
+                    _tiles.drawTile(tileX, tileY, { (uint16_t)' ', charColor, bgColor, false, false });
+                }
+                break;
+            }
+            
+            // Рисуем символ, если он в видимой области
+            if (col >= _scrollX) {
+                int tileX = col - _scrollX + 1;
+                int tileY = row + 1;
+                
+                bool isCursor = (tileX == cursorX && tileY == cursorY);
+                uint8_t bgColor = isCursor ? getColorByPalette(COLOR_YELLOW) : 0;
+                uint8_t charColor = isCursor ? 0 : textColor;
+                
+                _tiles.drawTile(tileX, tileY, { code, charColor, bgColor, false, false });
+            }
+            
+            col++;
         }
     }
 
@@ -292,7 +308,7 @@ void Editor::renderEditor() {
             frameColor,
             0,
             false,
-            false,
+            false
         });
     }
 
