@@ -41,6 +41,7 @@ private:
     void handleInput(float dt);
     void ensureCursorVisible();
     void renderEditor();
+    bool save();
     
     // Вставка/удаление символов
     void insertChar(uint16_t ch);
@@ -74,4 +75,5 @@ private:
     
     KeyRepeat keyRepeat_;
     bool _isEngLayout = true;  // по умолчанию английская раскладка
+    bool _isModified = false;  // флаг несохранённых изменений
 };

@@ -72,12 +72,21 @@ bool Editor::init() {
 
     memset(_buffer, 0, sizeof(_buffer));
 
-    if (!SDCARD::readTextFileLimited(_path, _buffer, MAX_FILE_SIZE)) {
-        return false;
+    // Проверяем, существует ли файл
+    if (SDCARD::fileExists(_path)) {
+        // Файл существует - загружаем его
+        if (!SDCARD::readTextFileLimited(_path, _buffer, MAX_FILE_SIZE)) {
+            return false;
+        }
+        _isModified = false;  // Файл загружен, изменений нет
+    } else {
+        // Файл не существует - создаём пустой буфер для нового файла
+        _buffer[0] = '\0';
+        _isModified = true;  // Помечаем как несохранённый
     }
 
     parseLines();
-    
+
     return true;
 }
 
@@ -108,7 +117,6 @@ void Editor::parseLines() {
 // ============================================================
 
 void Editor::handleInput(float dt) {
-    bool navUsed = false;
 
     // ===== Сначала обрабатываем ввод текста =====
     // Это очищает буфер клавиатуры от старых символов
@@ -116,27 +124,41 @@ void Editor::handleInput(float dt) {
     // BACKSPACE - удаление символа слева
     if (keyRepeat_.check(KEYBOARD::BACKSPACE, dt)) {
         deleteCharBack();
-        navUsed = true;
+        _isModified = true;
     }
 
     // DELETE - удаление символа справа
     if (keyRepeat_.check(KEYBOARD::DELETE, dt)) {
         deleteCharForward();
-        navUsed = true;
+        _isModified = true;
     }
 
     // ENTER - новая строка
     if (KEYBOARD::isJustPressed(KEYBOARD::ENTER)) {
         insertNewline();
-        navUsed = true;
+        _isModified = true;
     }
+
+    // ===== Сохранение (Ctrl+S) - ПЕРЕД обработкой символов =====
+    bool ctrl = KEYBOARD::isPressed(KEYBOARD::CTRL_LEFT) ||
+                KEYBOARD::isPressed(KEYBOARD::CTRL_RIGHT);
     
+    if (ctrl && KEYBOARD::isJustPressed(KEYBOARD::S)) {
+        if (save()) {
+            _isModified = false;
+        }
+        // Очищаем буфер клавиатуры от 's', чтобы не печаталась
+        uint16_t dummy;
+        while (KEYBOARD::getChar(_isEngLayout, dummy)) {}
+        return;  // Выходим, не обрабатываем остальные клавиши в этом кадре
+    }
+
     // Печатаемые символы - обрабатываем все из буфера
     // (навигационные клавиши уже отфильтрованы в драйвере keyboard.cpp)
     uint16_t ch;
     while (KEYBOARD::getChar(_isEngLayout, ch)) {
         insertChar(ch);
-        navUsed = true;
+        _isModified = true;
     }
 
     // ===== Потом навигация =====
@@ -144,7 +166,6 @@ void Editor::handleInput(float dt) {
 
     if (keyRepeat_.check(KEYBOARD::ESC, dt)) {
         requestExit();
-        navUsed = true;
     }
 
     if (keyRepeat_.check(KEYBOARD::UP, dt)) {
@@ -155,7 +176,6 @@ void Editor::handleInput(float dt) {
             if (_cursor.column > len)
                 _cursor.column = len;
         }
-        navUsed = true;
     }
 
     if (keyRepeat_.check(KEYBOARD::DOWN, dt)) {
@@ -166,7 +186,6 @@ void Editor::handleInput(float dt) {
             if (_cursor.column > len)
                 _cursor.column = len;
         }
-        navUsed = true;
     }
 
     if (keyRepeat_.check(KEYBOARD::LEFT, dt)) {
@@ -178,7 +197,6 @@ void Editor::handleInput(float dt) {
             const char* prevLine = &_buffer[_lineOffsets[_cursor.line]];
             _cursor.column = UTF8::length(prevLine);
         }
-        navUsed = true;
     }
 
     if (keyRepeat_.check(KEYBOARD::RIGHT, dt)) {
@@ -196,7 +214,6 @@ void Editor::handleInput(float dt) {
                 _cursor.column = 0;
             }
         }
-        navUsed = true;
     }
 
     // ===== Быстрая прокрутка =====
@@ -208,7 +225,6 @@ void Editor::handleInput(float dt) {
         } else {
             _cursor.line = 0;
         }
-        navUsed = true;
     }
 
     if (keyRepeat_.check(KEYBOARD::PAGEDOWN, dt)) {
@@ -218,20 +234,17 @@ void Editor::handleInput(float dt) {
         } else {
             _cursor.line = _lineCount - 1;
         }
-        navUsed = true;
     }
 
     // ===== HOME / END =====
 
     if (keyRepeat_.check(KEYBOARD::HOME, dt)) {
         _cursor.column = 0;
-        navUsed = true;
     }
 
     if (keyRepeat_.check(KEYBOARD::END, dt)) {
         const char* line = &_buffer[_lineOffsets[_cursor.line]];
         _cursor.column = UTF8::length(line);
-        navUsed = true;
     }
     
     // ===== Переключение раскладки (Alt+Shift) =====
@@ -245,6 +258,20 @@ void Editor::handleInput(float dt) {
         (shift && KEYBOARD::isJustPressed(KEYBOARD::ALT_LEFT)) ||
         (shift && KEYBOARD::isJustPressed(KEYBOARD::ALT_RIGHT))) {
         _isEngLayout = !_isEngLayout;
+    }
+
+    // ===== Ограничение позиции курсора пределами строки =====
+    if (_lineCount > 0 && _cursor.line < _lineCount) {
+        const char* line = &_buffer[_lineOffsets[_cursor.line]];
+        uint16_t len = 0;
+        const char* ptr = line;
+        while (*ptr && *ptr != '\n' && *ptr != '\r') {
+            uint16_t code;
+            ptr = UTF8::decode(ptr, code);
+            len++;
+        }
+        if (_cursor.column > len)
+            _cursor.column = len;
     }
 
     ensureCursorVisible();
@@ -318,7 +345,11 @@ void Editor::renderEditor() {
 
     // Рисуем текст заголовка по центру с инверсией
     char title[128];
-    snprintf(title, sizeof(title), " BOX87 TEXT EDITOR : %s ", _path);
+    if (_isModified) {
+        snprintf(title, sizeof(title), " BOX87 TEXT EDITOR : %s [*] ", _path);
+    } else {
+        snprintf(title, sizeof(title), " BOX87 TEXT EDITOR : %s ", _path);
+    }
 
     int titleLen = strlen(title);
     int titleStartX = (w - titleLen) / 2;
@@ -426,13 +457,25 @@ void Editor::renderEditor() {
     // Подсчитываем общее количество символов (Unicode) и байт
     uint32_t totalChars = 0;
     uint32_t totalBytes = 0;
-    
+
     for (uint16_t i = 0; i < _lineCount; i++) {
         const char* line = &_buffer[_lineOffsets[i]];
-        uint16_t lineLen = strlen(line);
-        totalBytes += lineLen;
-        totalChars += UTF8::length(line);
         
+        // Считаем длину строки до \n или \0
+        uint16_t lineByteLen = 0;
+        uint16_t lineCharLen = 0;
+        const char* ptr = line;
+        
+        while (*ptr && *ptr != '\n' && *ptr != '\r') {
+            uint16_t code;
+            ptr = UTF8::decode(ptr, code);
+            lineByteLen += (code < 0x80) ? 1 : (code < 0x800) ? 2 : 3;
+            lineCharLen++;
+        }
+        
+        totalBytes += lineByteLen;
+        totalChars += lineCharLen;
+
         // Добавляем символ newline (кроме последней строки)
         if (i < _lineCount - 1) {
             totalBytes++;    // 1 байт для \n
@@ -717,6 +760,57 @@ void Editor::deleteCharForward() {
 
     // Перестраиваем offsets
     parseLines();
+}
+
+// ============================================================
+// Сохранение файла
+// ============================================================
+
+bool Editor::save() {
+    // Вычисляем необходимую длину буфера
+    size_t totalLen = 0;
+    for (uint16_t i = 0; i < _lineCount; i++) {
+        const char* line = &_buffer[_lineOffsets[i]];
+        totalLen += strlen(line);
+        if (i < _lineCount - 1) {
+            totalLen++;  // \n между строками
+        }
+    }
+
+    // Создаём буфер
+    char* writeBuffer = (char*)malloc(totalLen + 1);
+    if (!writeBuffer) {
+        LOG.println("Failed to allocate write buffer");
+        return false;
+    }
+
+    // Копируем строки в буфер, вставляя \n
+    size_t pos = 0;
+    for (uint16_t i = 0; i < _lineCount; i++) {
+        const char* line = &_buffer[_lineOffsets[i]];
+        size_t lineLen = strlen(line);
+        memcpy(writeBuffer + pos, line, lineLen);
+        pos += lineLen;
+        
+        if (i < _lineCount - 1) {
+            writeBuffer[pos++] = '\n';
+        }
+    }
+    writeBuffer[pos] = '\0';
+
+    // Используем готовую функцию записи
+    bool result = SDCARD::writeTextFile(_path, writeBuffer);
+    
+    free(writeBuffer);
+    
+    if (result) {
+        LOG.print("File saved: ");
+        LOG.println(_path);
+    } else {
+        LOG.println("Write failed");
+    }
+    
+    return result;
 }
 
 void Editor::tick() {

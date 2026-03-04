@@ -987,14 +987,6 @@ static bool cmd_edit(Shell& shell) {
         return false;
     }
 
-    if (!SDCARD::fileExists(path)) {
-        con.setColor(COLOR_RED);
-        con.print("File not found: ");
-        con.printLn(path);
-        con.useDefaultColor();
-        return false;
-    }
-
     shell.app().requestSwitch(
         new Editor(path)
     ); 
