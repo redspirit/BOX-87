@@ -203,11 +203,11 @@ void Editor::renderEditor() {
     }
 
     // Боковые границы
-    for (int y = 1; y < h; y++) {
+    for (int y = 1; y < h - 2; y++) {
         _tiles.drawTile(0,     y, { 0x2502, frameColor, 0, false, true });
         _tiles.drawTile(w - 1, y, { 0x2502, frameColor, 0, false, true });
     }
-    
+
     // Углы
     _tiles.drawTile(0,     h - 2, { 0x251C, frameColor, 0, false, true });  // левый-нижний
     _tiles.drawTile(w - 1, h - 2, { 0x2524, frameColor, 0, false, true });  // правый-нижний
@@ -224,7 +224,7 @@ void Editor::renderEditor() {
 
     // Рисуем текст заголовка с инверсией
     for (int i = 0; i < titleLen && titleStartX + i < w; i++) {
-        _tiles.drawTile(titleStartX + i, 0, { (uint16_t)title[i], frameColor, 0, true, false });
+        _tiles.drawTile(titleStartX + i, 0, { title[i], frameColor, 0, true, false });
     }
 
     // ===== Текст =====
@@ -240,7 +240,7 @@ void Editor::renderEditor() {
 
         const char* line = &_buffer[_lineOffsets[lineIndex]];
         int len = strlen(line);
-        
+
         // Вычисляем позицию курсора
         int cursorX = _cursor.column - _scrollX + 1;
         int cursorY = _cursor.line   - _scrollY + 1;
@@ -250,13 +250,13 @@ void Editor::renderEditor() {
             int charIndex = _scrollX + col;
             int tileX = col + 1;
             int tileY = row + 1;
-            
+
             // Проверяем, это позиция курсора?
             bool isCursor = (tileX == cursorX && tileY == cursorY);
-            
+
             uint8_t bgColor = isCursor ? getColorByPalette(COLOR_YELLOW) : 0;
             uint8_t charColor = isCursor ? 0 : textColor;
-            
+
             // Если есть символ — рисуем его, иначе — пробел
             uint8_t ch = (charIndex < len) ? (uint8_t)line[charIndex] : (uint8_t)' ';
 
@@ -266,6 +266,34 @@ void Editor::renderEditor() {
                 { ch, charColor, bgColor, false, false }
             );
         }
+    }
+
+    // ===== Scrollbar (вертикальный) =====
+
+    int scrollStartY = 1;
+    int scrollEndY = h - 3;
+    int scrollTrackHeight = scrollEndY - scrollStartY + 1;
+
+    // Вычисляем высоту "бегунка"
+    int thumbHeight = (_lineCount > 0) ? (viewH * scrollTrackHeight) / _lineCount : 1;
+    if (thumbHeight < 1) thumbHeight = 1;
+    if (thumbHeight > scrollTrackHeight) thumbHeight = scrollTrackHeight;
+
+    // Вычисляем позицию "бегунка"
+    int scrollableLines = _lineCount - viewH;
+    int thumbY = (scrollableLines > 0)
+        ? scrollStartY + (_scrollY * (scrollTrackHeight - thumbHeight)) / scrollableLines
+        : scrollStartY;
+
+    // Рисуем только бегунок scrollbar поверх правой границы
+    for (int y = thumbY; y < thumbY + thumbHeight && y <= scrollEndY; y++) {
+        _tiles.drawTile(w - 1, y, {
+            0x2592,
+            frameColor,
+            0,
+            false,
+            false,
+        });
     }
 
     // ===== Статус =====
