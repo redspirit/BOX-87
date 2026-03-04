@@ -81,12 +81,22 @@ void Editor::handleInput() {
     if (KEYBOARD::isJustPressed(KEYBOARD::UP)) {
         if (_cursor.line > 0) {
             _cursor.line--;
+            // Ограничиваем позицию курсора длиной строки
+            const char* line = &_buffer[_lineOffsets[_cursor.line]];
+            uint16_t len = strlen(line);
+            if (_cursor.column > len)
+                _cursor.column = len;
         }
     }
 
     if (KEYBOARD::isJustPressed(KEYBOARD::DOWN)) {
         if (_cursor.line + 1 < _lineCount) {
             _cursor.line++;
+            // Ограничиваем позицию курсора длиной строки
+            const char* line = &_buffer[_lineOffsets[_cursor.line]];
+            uint16_t len = strlen(line);
+            if (_cursor.column > len)
+                _cursor.column = len;
         }
     }
 
