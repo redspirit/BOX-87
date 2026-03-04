@@ -187,16 +187,34 @@ void Editor::renderEditor() {
     uint8_t textColor   = getColorByPalette(COLOR_WHITE);
     uint8_t statusColor = getColorByPalette(COLOR_YELLOW);
 
-    // ===== Заголовок (в стиле nano) =====
+    // ===== Рамка =====
 
-    // Заполняем всю строку пробелами: цвет=frameColor, фон=0, прозрачный=true
-    for (int x = 0; x < w; x++) {
-        _tiles.drawTile(x, 0, { (uint8_t)' ', frameColor, 0, false, true });
+    // Верхняя граница
+    for (int x = 1; x < w - 1; x++) {
+        _tiles.drawTile(x, 0, { 0x2550, frameColor, 0, false, true });
+    }
+    // Углы
+    _tiles.drawTile(0,     0, { 0x2552, frameColor, 0, false, true });  // левый-верхний
+    _tiles.drawTile(w - 1, 0, { 0x2555, frameColor, 0, false, true });  // правый-верхний
+
+    // Нижняя граница (выше статус-бара)
+    for (int x = 1; x < w - 1; x++) {
+        _tiles.drawTile(x, h - 2, { 0x2500, frameColor, 0, false, true });
     }
 
-    // Теперь рисуем текст заголовка по центру с инверсией
-    // color=frameColor, bgColor=0, isInversion=true
-    // При инверсии: пиксели символа=bgColor(0)=чёрный, фон=color(frameColor)
+    // Боковые границы
+    for (int y = 1; y < h; y++) {
+        _tiles.drawTile(0,     y, { 0x2502, frameColor, 0, false, true });
+        _tiles.drawTile(w - 1, y, { 0x2502, frameColor, 0, false, true });
+    }
+    
+    // Углы
+    _tiles.drawTile(0,     h - 2, { 0x251C, frameColor, 0, false, true });  // левый-нижний
+    _tiles.drawTile(w - 1, h - 2, { 0x2524, frameColor, 0, false, true });  // правый-нижний
+
+    // ===== Заголовок =====
+
+    // Рисуем текст заголовка по центру с инверсией
     char title[128];
     snprintf(title, sizeof(title), " BOX87 TEXT EDITOR : %s ", _path);
 
@@ -204,19 +222,9 @@ void Editor::renderEditor() {
     int titleStartX = (w - titleLen) / 2;
     if (titleStartX < 0) titleStartX = 0;
 
+    // Рисуем текст заголовка с инверсией
     for (int i = 0; i < titleLen && titleStartX + i < w; i++) {
-        _tiles.drawTile(titleStartX + i, 0, { (uint8_t)title[i], frameColor, 0, true, false });
-    }
-
-    // ===== Нижняя рамка =====
-
-    for (int x = 0; x < w; x++) {
-        _tiles.drawTile(x, h - 2,    { 0x2500, frameColor, 0, false, true });
-    }
-
-    for (int y = 1; y < h - 1; y++) {
-        _tiles.drawTile(0,     y, { 0x2502, frameColor, 0, false, true });
-        _tiles.drawTile(w - 1, y, { 0x2502, frameColor, 0, false, true });
+        _tiles.drawTile(titleStartX + i, 0, { (uint16_t)title[i], frameColor, 0, true, false });
     }
 
     // ===== Текст =====
