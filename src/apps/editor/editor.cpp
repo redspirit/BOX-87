@@ -153,6 +153,26 @@ void Editor::handleInput(float dt) {
         while (KEYBOARD::getChar(_isEngLayout, dummy)) {}
         return;  // Выходим, не обрабатываем остальные клавиши в этом кадре
     }
+    
+    // Ctrl+R - удалить текущую строку
+    if (ctrl && KEYBOARD::isJustPressed(KEYBOARD::R)) {
+        deleteCurrentLine();
+        _isModified = true;
+        // Очищаем буфер от 'r'
+        uint16_t dummy;
+        while (KEYBOARD::getChar(_isEngLayout, dummy)) {}
+        return;
+    }
+    
+    // Ctrl+D - дублировать текущую строку
+    if (ctrl && KEYBOARD::isJustPressed(KEYBOARD::D)) {
+        duplicateCurrentLine();
+        _isModified = true;
+        // Очищаем буфер от 'd'
+        uint16_t dummy;
+        while (KEYBOARD::getChar(_isEngLayout, dummy)) {}
+        return;
+    }
 
     // Печатаемые символы - обрабатываем все из буфера
     // (навигационные клавиши уже отфильтрованы в драйвере keyboard.cpp)
@@ -763,6 +783,93 @@ void Editor::deleteCharForward() {
             &_buffer[absoluteDeletePos + charLen],
             strlen(&_buffer[absoluteDeletePos + charLen]) + 1);
 
+    // Перестраиваем offsets
+    parseLines();
+}
+
+// ============================================================
+// Удаление/дублирование строки
+// ============================================================
+
+// Удаление текущей строки
+void Editor::deleteCurrentLine() {
+    if (_lineCount == 0 || _cursor.line >= _lineCount)
+        return;
+    
+    // Находим длину текущей строки в байтах
+    char* line = &_buffer[_lineOffsets[_cursor.line]];
+    int lineLen = 0;
+    while (line[lineLen] && line[lineLen] != '\n' && line[lineLen] != '\r') {
+        lineLen++;
+    }
+    
+    // Глобальная позиция начала строки
+    int lineStartPos = _lineOffsets[_cursor.line];
+    
+    // Проверяем, есть ли \n после строки (не последняя ли строка)
+    int bytesToDelete = lineLen;
+    if (line[lineLen] == '\n' || line[lineLen] == '\r') {
+        bytesToDelete++;  // Удаляем и \n
+    }
+    
+    // Сдвигаем весь остаток файла влево
+    memmove(&_buffer[lineStartPos],
+            &_buffer[lineStartPos + bytesToDelete],
+            strlen(&_buffer[lineStartPos + bytesToDelete]) + 1);
+    
+    // Если курсор был на последней строке, перемещаем на предыдущую
+    if (_cursor.line >= _lineCount - 1 && _cursor.line > 0) {
+        _cursor.line--;
+    }
+    
+    // Сбрасываем колонку в 0
+    _cursor.column = 0;
+    
+    // Перестраиваем offsets
+    parseLines();
+}
+
+// Дублирование текущей строки
+void Editor::duplicateCurrentLine() {
+    if (_lineCount == 0 || _cursor.line >= _lineCount)
+        return;
+    
+    // Находим длину текущей строки в байтах
+    char* line = &_buffer[_lineOffsets[_cursor.line]];
+    int lineLen = 0;
+    while (line[lineLen] && line[lineLen] != '\n' && line[lineLen] != '\r') {
+        lineLen++;
+    }
+    
+    // Проверяем место в буфере (нужно lineLen + 1 для \n)
+    int totalLen = strlen(_buffer);
+    int insertSize = lineLen + 1;  // строка + \n
+    
+    if (totalLen + insertSize >= MAX_FILE_SIZE - 2) {
+        return;  // Буфер полон
+    }
+    
+    // Глобальная позиция после текущей строки (после \n если есть)
+    int insertPos = _lineOffsets[_cursor.line] + lineLen;
+    if (line[lineLen] == '\n' || line[lineLen] == '\r') {
+        insertPos++;  // Вставляем ПОСЛЕ \n
+    }
+    
+    // Сдвигаем весь остаток файла вправо
+    memmove(&_buffer[insertPos + insertSize],
+            &_buffer[insertPos],
+            totalLen - insertPos + 1);
+    
+    // Копируем текущую строку
+    memcpy(&_buffer[insertPos], line, lineLen);
+    
+    // Добавляем \n
+    _buffer[insertPos + lineLen] = '\n';
+    
+    // Перемещаем курсор на новую строку
+    _cursor.line++;
+    _cursor.column = 0;
+    
     // Перестраиваем offsets
     parseLines();
 }

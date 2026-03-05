@@ -48,6 +48,8 @@ private:
     void insertNewline();
     void deleteCharBack();
     void deleteCharForward();
+    void deleteCurrentLine();
+    void duplicateCurrentLine();
 
 private:
     uint32_t _frameTimeMs = 16;
