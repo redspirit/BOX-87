@@ -496,7 +496,7 @@ void Editor::renderEditor() {
     // Правая часть статус-бара с индикатором раскладки
     char statusRight[48];
     snprintf(statusRight, sizeof(statusRight),
-             "Exit(Esc) Save(Ctrl+S) [%s]",
+             "Exit-Esc Save-^S [%s]",
              _isEngLayout ? "EN" : "RU");
 
     // Вычисляем позицию для правой части
@@ -668,11 +668,12 @@ void Editor::deleteCharBack() {
 
         // ГЛОБАЛЬНЫЙ индекс удаления
         int absoluteDeletePos = _lineOffsets[_cursor.line] + prevBytePos;
-        
+
         // Сдвигаем ВЕСЬ остаток файла влево
-        memmove(&_buffer[absoluteDeletePos], 
-                &_buffer[absoluteDeletePos + charLen], 
-                strlen(&_buffer[absoluteDeletePos]) + 1);
+        // Длина от источника + 1 для захвата \0
+        memmove(&_buffer[absoluteDeletePos],
+                &_buffer[absoluteDeletePos + charLen],
+                strlen(&_buffer[absoluteDeletePos + charLen]) + 1);
 
         // Перестраиваем offsets
         parseLines();
@@ -690,11 +691,12 @@ void Editor::deleteCharBack() {
         
         // ГЛОБАЛЬНЫЙ индекс \n который нужно удалить
         int newlinePos = _lineOffsets[_cursor.line - 1] + prevLineLen;
-        
+
         // Сдвигаем ВЕСЬ остаток файла влево на 1 (удаляем \n)
-        memmove(&_buffer[newlinePos], 
-                &_buffer[newlinePos + 1], 
-                strlen(&_buffer[newlinePos]));
+        // Длина от источника + 1 для захвата \0
+        memmove(&_buffer[newlinePos],
+                &_buffer[newlinePos + 1],
+                strlen(&_buffer[newlinePos + 1]) + 1);
 
         // Перестраиваем offsets
         parseLines();
@@ -721,11 +723,12 @@ void Editor::deleteCharForward() {
         if (_cursor.line + 1 < _lineCount) {
             // ГЛОБАЛЬНЫЙ индекс \n который нужно удалить
             int newlinePos = _lineOffsets[_cursor.line] + lineLen;
-            
+
             // Сдвигаем ВЕСЬ остаток файла влево на 1 (удаляем \n)
-            memmove(&_buffer[newlinePos], 
-                    &_buffer[newlinePos + 1], 
-                    strlen(&_buffer[newlinePos]));
+            // Длина от источника + 1 для захвата \0
+            memmove(&_buffer[newlinePos],
+                    &_buffer[newlinePos + 1],
+                    strlen(&_buffer[newlinePos + 1]) + 1);
 
             // Перестраиваем offsets
             parseLines();
@@ -753,11 +756,12 @@ void Editor::deleteCharForward() {
 
     // ГЛОБАЛЬНЫЙ индекс удаления
     int absoluteDeletePos = _lineOffsets[_cursor.line] + bytePos;
-    
+
     // Сдвигаем ВЕСЬ остаток файла влево
-    memmove(&_buffer[absoluteDeletePos], 
-            &_buffer[absoluteDeletePos + charLen], 
-            strlen(&_buffer[absoluteDeletePos]) + 1);
+    // Длина от источника + 1 для захвата \0
+    memmove(&_buffer[absoluteDeletePos],
+            &_buffer[absoluteDeletePos + charLen],
+            strlen(&_buffer[absoluteDeletePos + charLen]) + 1);
 
     // Перестраиваем offsets
     parseLines();
