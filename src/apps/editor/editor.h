@@ -2,8 +2,10 @@
 
 #include "ISubsystem.h"
 #include "TextTiles.h"
+#include "syntax_profiles.h"
 
 #define MAX_PATH 32
+#define MAX_SYNTAX_RULES 64  // Максимум правил для активной строки
 
 // Класс для обработки автоповтора клавиш
 class KeyRepeat {
@@ -78,4 +80,6 @@ private:
     KeyRepeat keyRepeat_;
     bool _isEngLayout = true;  // по умолчанию английская раскладка
     bool _isModified = false;  // флаг несохранённых изменений
+    
+    const LanguageProfile* _syntaxProfile = nullptr;  // текущий профиль подсветки
 };

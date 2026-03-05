@@ -86,6 +86,9 @@ bool Editor::init() {
     }
 
     parseLines();
+    
+    // Инициализируем профиль подсветки синтаксиса
+    _syntaxProfile = getProfileForFile(_path);
 
     return true;
 }
@@ -323,6 +326,124 @@ void Editor::ensureCursorVisible() {
 }
 
 // ============================================================
+// Подсветка синтаксиса
+// ============================================================
+
+// Анализирует строку и возвращает массив цветов для каждого символа
+// Возвращает количество проанализированных байт
+static int analyzeLine(
+    const LanguageProfile* profile,
+    const char* line,
+    uint8_t* colors,
+    int maxLen,
+    uint8_t defaultColor
+) {
+    if (!profile || !profile->rules) {
+        return 0;
+    }
+    
+    int pos = 0;
+    
+    while (pos < maxLen && line[pos] != '\0' && line[pos] != '\n' && line[pos] != '\r') {
+        bool matched = false;
+        const char* remaining = &line[pos];
+        
+        // Проверяем все правила
+        for (size_t r = 0; r < profile->ruleCount; r++) {
+            const SyntaxRule& rule = profile->rules[r];
+            size_t startLen = strlen(rule.start);
+            if (startLen == 0) continue;
+            
+            // ===== 1. ДИАПАЗОНЫ (Строки, Комментарии) =====
+            if (rule.type == RuleType::RANGE) {
+                if (strncmp(remaining, rule.start, startLen) == 0) {
+                    size_t endLen = strlen(rule.end);
+                    uint8_t ruleColor = getColorByPalette(rule.color);  // Конвертируем цвет
+
+                    for (size_t i = 0; i < startLen && pos < maxLen; i++) {
+                        colors[pos++] = ruleColor;
+                    }
+
+                    while (pos < maxLen && line[pos] != '\0' && line[pos] != '\n' && line[pos] != '\r') {
+                        if (endLen > 0 && strncmp(&line[pos], rule.end, endLen) == 0) {
+                            for (size_t i = 0; i < endLen && pos < maxLen; i++) {
+                                colors[pos++] = ruleColor;
+                            }
+                            break;
+                        }
+                        colors[pos++] = ruleColor;
+                    }
+                    matched = true;
+                    break;
+                }
+            }
+            // ===== 2. ПОСЛЕДОВАТЕЛЬНОСТИ (Скобки, Операторы) =====
+            else if (rule.type == RuleType::SEQUENCE) {
+                if (strncmp(remaining, rule.start, startLen) == 0) {
+                    uint8_t ruleColor = getColorByPalette(rule.color);  // Конвертируем цвет
+                    for (size_t i = 0; i < startLen && pos < maxLen; i++) {
+                        colors[pos++] = ruleColor;
+                    }
+                    matched = true;
+                    break;
+                }
+            }
+            // ===== 3. КЛЮЧЕВЫЕ СЛОВА =====
+            else if (rule.type == RuleType::KEYWORD) {
+                bool leftBoundaryOK = (pos == 0 || !isWordChar(line[pos - 1]));
+                bool rightBoundaryOK = !isWordChar(line[pos + startLen]);
+
+                if (leftBoundaryOK && rightBoundaryOK && strncmp(remaining, rule.start, startLen) == 0) {
+                    uint8_t ruleColor = getColorByPalette(rule.color);  // Конвертируем цвет
+                    for (size_t i = 0; i < startLen && pos < maxLen; i++) {
+                        colors[pos++] = ruleColor;
+                    }
+                    matched = true;
+                    break;
+                }
+            }
+        }
+        
+        // ===== 4. ЧИСЛА (Автоматическая подсветка) =====
+        // Если ни одно правило не сработало, и мы видим цифру
+        if (!matched && remaining[0] >= '0' && remaining[0] <= '9') {
+            
+            // Убеждаемся, что цифра не является частью слова (например, var1)
+            bool isPartOfWord = false;
+            if (pos > 0) {
+                char prev = line[pos - 1];
+                if ((prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') || prev == '_') {
+                    isPartOfWord = true;
+                }
+            }
+            
+            if (!isPartOfWord) {
+                // Красим всё, что похоже на число
+                while (pos < maxLen && line[pos] != '\0' && line[pos] != '\n' && line[pos] != '\r') {
+                    char c = line[pos];
+                    // Разрешаем цифры, точку (для дробей 3.14), и символы x, a-f (для 0xFF)
+                    if ((c >= '0' && c <= '9') || c == '.' || c == 'x' || c == 'X' || 
+                        (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+                        colors[pos++] = getColorByPalette(SYNTAX_COLOR_NUMBER);
+                    } else {
+                        break; // Число закончилось
+                    }
+                }
+                matched = true;
+            }
+        }
+        
+        // ===== 5. ДЕФОЛТНЫЙ ЦВЕТ =====
+        // Если вообще ничего не подошло
+        if (!matched) {
+            colors[pos++] = defaultColor;
+        }
+    }
+    
+    return pos;
+}
+
+// ============================================================
 // Рендер
 // ============================================================
 
@@ -393,6 +514,9 @@ void Editor::renderEditor() {
         _buffer[0] = '\0';
     }
 
+    // Буфер для цветов синтаксиса (максимальная длина строки)
+    static uint8_t syntaxColors[1024];  // Статический буфер для экономии стека
+
     for (int row = 0; row < viewH; row++) {
 
         int lineIndex = _scrollY + row;
@@ -401,6 +525,20 @@ void Editor::renderEditor() {
 
         const char* line = &_buffer[_lineOffsets[lineIndex]];
         
+        // Анализируем синтаксис строки
+        uint8_t defaultColor = textColor;
+        int analyzedLen = 0;
+        
+        if (_syntaxProfile && _syntaxProfile->rules) {
+            analyzedLen = analyzeLine(
+                _syntaxProfile,
+                line,
+                syntaxColors,
+                1023,  // Максимум символов в строке
+                defaultColor
+            );
+        }
+
         // Вычисляем позицию курсора
         int cursorX = _cursor.column - _scrollX + 1;
         int cursorY = _cursor.line   - _scrollY + 1;
@@ -408,7 +546,8 @@ void Editor::renderEditor() {
         // Декодируем UTF-8 символы и рисуем их
         const char* ptr = line;
         int col = 0;  // визуальная колонка (Unicode символы)
-        
+        int bytePos = 0;  // позиция в байтах
+
         while (col < viewW + _scrollX) {
             uint16_t code;
             ptr = UTF8::decode(ptr, code);
@@ -422,7 +561,7 @@ void Editor::renderEditor() {
 
                     bool isCursor = (tileX == cursorX && tileY == cursorY);
                     uint8_t bgColor = isCursor ? getColorByPalette(COLOR_YELLOW) : 0;
-                    uint8_t charColor = isCursor ? 0 : textColor;
+                    uint8_t charColor = isCursor ? 0 : defaultColor;
 
                     _tiles.drawTile(tileX, tileY, { (uint16_t)' ', charColor, bgColor, false, false });
                 }
@@ -436,11 +575,24 @@ void Editor::renderEditor() {
 
                 bool isCursor = (tileX == cursorX && tileY == cursorY);
                 uint8_t bgColor = isCursor ? getColorByPalette(COLOR_YELLOW) : 0;
-                uint8_t charColor = isCursor ? 0 : textColor;
+                
+                // Получаем цвет из анализа синтаксиса
+                uint8_t charColor = defaultColor;
+                if (bytePos < analyzedLen && _syntaxProfile && _syntaxProfile->rules) {
+                    charColor = syntaxColors[bytePos];
+                }
+                
+                // Курсор перекрывает цвет
+                if (isCursor) {
+                    charColor = 0;  // Чёрный текст на жёлтом фоне
+                }
 
                 _tiles.drawTile(tileX, tileY, { code, charColor, bgColor, false, false });
             }
 
+            // Вычисляем длину символа в байтах
+            int symbolLen = (code < 0x80) ? 1 : (code < 0x800) ? 2 : 3;
+            bytePos += symbolLen;
             col++;
         }
     }
