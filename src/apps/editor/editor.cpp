@@ -102,9 +102,10 @@ void Editor::parseLines() {
 
     size_t i = 0;
     while (i < MAX_FILE_SIZE - 1 && _buffer[i] != '\0') {
-        if (_buffer[i] == '\n') {
+        if (_buffer[i] == '\n' || _buffer[i] == '\r') {
+            // Перенос строки ВСЕГДА означает начало новой строки, 
+            // даже если она пустая (на ней будет стоять курсор)
             if (_lineCount < MAX_LINES) {
-                // Следующая строка начинается сразу после \n
                 _lineOffsets[_lineCount++] = i + 1; 
             }
         }
@@ -767,41 +768,18 @@ void Editor::deleteCharForward() {
 // ============================================================
 
 bool Editor::save() {
-    // Вычисляем необходимую длину буфера
-    size_t totalLen = 0;
-    for (uint16_t i = 0; i < _lineCount; i++) {
-        const char* line = &_buffer[_lineOffsets[i]];
-        totalLen += strlen(line);
-        if (i < _lineCount - 1) {
-            totalLen++;  // \n между строками
-        }
-    }
-
-    // Создаём буфер
-    char* writeBuffer = (char*)malloc(totalLen + 1);
-    if (!writeBuffer) {
-        LOG.println("Failed to allocate write buffer");
-        return false;
-    }
-
-    // Копируем строки в буфер, вставляя \n
-    size_t pos = 0;
-    for (uint16_t i = 0; i < _lineCount; i++) {
-        const char* line = &_buffer[_lineOffsets[i]];
-        size_t lineLen = strlen(line);
-        memcpy(writeBuffer + pos, line, lineLen);
-        pos += lineLen;
-        
-        if (i < _lineCount - 1) {
-            writeBuffer[pos++] = '\n';
-        }
-    }
-    writeBuffer[pos] = '\0';
-
-    // Используем готовую функцию записи
-    bool result = SDCARD::writeTextFile(_path, writeBuffer);
+    // Весь текст уже лежит в _buffer в правильном формате (с \n внутри),
+    // поэтому нам достаточно узнать длину всей строки до финального \0.
+    size_t totalLen = strlen(_buffer);
     
-    free(writeBuffer);
+    bool result = false;
+    if (SDCARD::open(_path, "w")) {
+        File* f = SDCARD::getFile();
+        if (f && f->write((const uint8_t*)_buffer, totalLen) == totalLen) {
+            result = true;
+        }
+        SDCARD::close();
+    }
     
     if (result) {
         LOG.print("File saved: ");
