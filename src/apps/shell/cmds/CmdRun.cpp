@@ -1,197 +1,59 @@
 #include "CmdRun.h"
+#include "LuaRunner.h"
 #include "palette.h"
 #include "sdcard.h"
 
+// ============================================================
+// Адаптер Shell → ILuaConsole
+// ============================================================
 
-static int lua_console_print(lua_State* L) {
-    Shell* shell = static_cast<Shell*>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (!shell) return 0;
-
-    auto& console = shell->console();
-    int nargs = lua_gettop(L);
-
-    for (int i = 1; i <= nargs; ++i) {
-        const char* str = luaL_tolstring(L, i, nullptr);
-        if (str) {
-            console.print(str);
-        }
-
-        if (i < nargs) {
-            console.print(" ");
-        }
+class ShellConsoleAdapter : public ILuaConsole {
+public:
+    explicit ShellConsoleAdapter(Shell& shell) : _shell(shell) {}
+    
+    void print(const char* text) override {
+        _shell.console().print(text);
     }
-
-    console.printLn();
-    return 0;
-}
-
-static int lua_console_setcolorrgb(lua_State* L) {
-    Shell* shell = static_cast<Shell*>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (!shell) return 0;
-
-    luaL_argcheck(L, lua_gettop(L) >= 3, 1, "setColorRGB requires 3 arguments (r, g, b)");
-
-    int r = (int)luaL_checkinteger(L, 1);
-    int g = (int)luaL_checkinteger(L, 2);
-    int b = (int)luaL_checkinteger(L, 3);
-
-    if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
-        return luaL_error(L, "Color components must be in range 0-255");
+    
+    void printLn() override {
+        _shell.console().printLn();
     }
-    shell->console().setColorRaw(rgb332(r, g, b));
-    return 0;
-}
-
-static int lua_console_setcolorraw(lua_State* L) {
-    Shell* shell = static_cast<Shell*>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (!shell) return 0;
-    luaL_argcheck(L, lua_gettop(L) >= 1, 1, "setColorRaw requires 1 argument (color code)");
-    int color = (int)luaL_checkinteger(L, 1);
-    if (color < 0 || color > 255) {
-        return luaL_error(L, "Color must be in range 0-255");
+    
+    void setColorRaw(uint8_t color) override {
+        _shell.console().setColorRaw(color);
     }
-    shell->console().setColorRaw((uint8_t)color);
-    return 0;
-}
-
-static int lua_console_setcolordefault(lua_State* L) {
-    Shell* shell = static_cast<Shell*>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (!shell) return 0;
-    shell->console().useDefaultColor();
-    return 0;
-}
-
-
-static const struct luaL_Reg console_methods[] = {
-    {"print",    lua_console_print},
-    {"setColorRGB", lua_console_setcolorrgb},
-    {"setColorRaw", lua_console_setcolorraw},
-    {"setColorDefault", lua_console_setcolordefault},
-    {NULL, NULL} // Маркер конца массива
+    
+    void useDefaultColor() override {
+        _shell.console().useDefaultColor();
+    }
+    
+private:
+    Shell& _shell;
 };
 
+// ============================================================
+// CmdRun implementation
+// ============================================================
 
-CmdRun::CmdRun() : L(nullptr), _shell(nullptr) {
-     _finished = false;
+CmdRun::CmdRun() : _luaRunner(nullptr), _shell(nullptr), _adapter(nullptr), _finished(false) {
 }
 
 CmdRun::~CmdRun() {
-    if (L)
-        lua_close(L);
-}
-
-void CmdRun::registerBindings() {
-    // 1. Создаем новую таблицу (наш будущий объект "console")
-    lua_newtable(L);
-    lua_pushlightuserdata(L, _shell);
-    luaL_setfuncs(L, console_methods, 1);
-    lua_setglobal(L, "console");
-}
-
-bool CmdRun::callMain() {
-    lua_getglobal(L, "main");
-
-    if (!lua_isfunction(L, -1)) {
-        _shell->console().print("No main() found\n");
-        lua_pop(L, 1);
-        return false;
+    if (_luaRunner) {
+        delete _luaRunner;
+        _luaRunner = nullptr;
     }
-
-    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
-        const char* err = lua_tostring(L, -1);
-        if (err)
-            _shell->console().print(err);
-
-        lua_pop(L, 1);
-        return false;
+    if (_adapter) {
+        delete _adapter;
+        _adapter = nullptr;
     }
-
-    return true;
-}
-
-const char* CmdRun::luaSDReader(lua_State* L, void* data, size_t* size) {
-    CmdRun* self = static_cast<CmdRun*>(data);
-    size_t read = SDCARD::read(self->_luaBuffer, LUA_READ_BUFFER);
-
-    if (read == 0) {
-        *size = 0;
-        return nullptr; // EOF
-    }
-
-    *size = read;
-    return reinterpret_cast<const char*>(self->_luaBuffer);
-}
-
-bool CmdRun::runFile(const char* path) {
-    if (!L)
-        return false;
-
-    char pathOut[MAX_PATH];
-    _shell->resolvePath(path, pathOut);
-
-    if(!SDCARD::open(pathOut)) {
-        _shell->console().printLn("File not found");
-        SDCARD::close();
-        return false;
-    }
-
-    if (lua_load(L,
-                 luaSDReader,
-                 this,        // передаём объект
-                 pathOut,
-                 nullptr) != LUA_OK)
-    {
-        const char* err = lua_tostring(L, -1);
-        if (err)
-            _shell->console().print(err);
-
-        lua_pop(L, 1);
-        SDCARD::close();
-        return false;
-    }
-
-    SDCARD::close();
-
-    // Выполняем файл (инициализация)
-    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
-        const char* err = lua_tostring(L, -1);
-        if (err)
-            _shell->console().print(err);
-
-        lua_pop(L, 1);
-        return false;
-    }
-
-    _finished = true;
-    _shell->console().useDefaultColor();
-    return true;
-    // return callMain();
-};
-
-void CmdRun::pushArguments() {
-    auto& cmd = _shell->parsedCmd();
-    lua_newtable(L); // создаем таблицу arg
-    int argc = cmd.argc();
-
-    for (int i = 1; i < argc; ++i) {
-        const char* a = cmd.argv(i);
-        if (!a) a = "";
-
-        lua_pushstring(L, a);
-        lua_rawseti(L, -2, i - 1); 
-        // i-1 потому что:
-        // argv(1) = имя файла → arg[0]
-        // argv(2) → arg[1]
-    }
-
-    lua_setglobal(L, "arg");
 }
 
 void CmdRun::start(Shell& shell) {
     _shell = &shell;
     auto& con = shell.console();
-    auto& cmd = shell.parsedCmd();        
-   
+    auto& cmd = shell.parsedCmd();
+
     const char* path = cmd.argv(1);
 
     if (cmd.argc() < 2) {
@@ -202,8 +64,13 @@ void CmdRun::start(Shell& shell) {
         return;
     }
 
-    L = luaL_newstate();
-    if (!L) {
+    // Создаём адаптер для консоли
+    _adapter = new ShellConsoleAdapter(shell);
+    
+    // Создаём Lua runner
+    _luaRunner = new LuaRunner();
+    
+    if (!_luaRunner->init(_adapter)) {
         con.setColor(COLOR_RED);
         con.printLn("LUA state not created");
         con.useDefaultColor();
@@ -211,11 +78,20 @@ void CmdRun::start(Shell& shell) {
         return;
     }
 
-    luaL_openlibs(L);
-    registerBindings();
-    pushArguments();
+    // Устанавливаем аргументы командной строки
+    int argc = cmd.argc();
+    const char** argv = new const char*[argc];
+    for (int i = 0; i < argc; i++) {
+        argv[i] = cmd.argv(i);
+    }
+    _luaRunner->setArguments(argc, argv);
+    delete[] argv;
 
-    if(!runFile(path)) {
+    // Загружаем и выполняем файл
+    char pathOut[MAX_PATH];
+    _shell->resolvePath(path, pathOut);
+    
+    if (!_luaRunner->loadFromFile(pathOut)) {
         con.setColor(COLOR_RED);
         con.printLn("LUA file not loaded");
         con.useDefaultColor();
@@ -224,12 +100,16 @@ void CmdRun::start(Shell& shell) {
 }
 
 void CmdRun::tick(Shell& shell) {
-    if (_finished)
+    if (_finished || !_luaRunner)
         return;
 
+    _luaRunner->tick();
 }
 
 void CmdRun::cancel(Shell& shell) {
+    if (_luaRunner) {
+        _luaRunner->cancel();
+    }
     _shell->console().useDefaultColor();
     _finished = true;
 }
@@ -239,5 +119,5 @@ bool CmdRun::isFinished() const {
 }
 
 void CmdRun::onChar(Shell& shell, uint16_t c) {
-    
+    // Пока ничего не нужно
 }
