@@ -7,29 +7,29 @@
 // ============================================================
 
 static int lua_console_print(lua_State* L) {
-    ILuaConsole* console = static_cast<ILuaConsole*>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (!console) return 0;
+    LuaConsoleCallbacks* cb = static_cast<LuaConsoleCallbacks*>(lua_touserdata(L, lua_upvalueindex(1)));
+    if (!cb || !cb->print) return 0;
 
     int nargs = lua_gettop(L);
 
     for (int i = 1; i <= nargs; ++i) {
         const char* str = luaL_tolstring(L, i, nullptr);
         if (str) {
-            console->print(str);
+            cb->print(cb->userData, str);
         }
 
         if (i < nargs) {
-            console->print(" ");
+            cb->print(cb->userData, " ");
         }
     }
 
-    console->printLn();
+    cb->printLn(cb->userData);
     return 0;
 }
 
 static int lua_console_setcolorrgb(lua_State* L) {
-    ILuaConsole* console = static_cast<ILuaConsole*>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (!console) return 0;
+    LuaConsoleCallbacks* cb = static_cast<LuaConsoleCallbacks*>(lua_touserdata(L, lua_upvalueindex(1)));
+    if (!cb || !cb->setColorRaw) return 0;
 
     luaL_argcheck(L, lua_gettop(L) >= 3, 1, "setColorRGB requires 3 arguments (r, g, b)");
 
@@ -41,15 +41,14 @@ static int lua_console_setcolorrgb(lua_State* L) {
         return luaL_error(L, "Color components must be in range 0-255");
     }
     
-    // Конвертируем RGB в индекс палитры (упрощённо)
     uint8_t color = (r >> 5) | ((g >> 5) << 3) | ((b >> 6) << 6);
-    console->setColorRaw(color);
+    cb->setColorRaw(cb->userData, color);
     return 0;
 }
 
 static int lua_console_setcolorraw(lua_State* L) {
-    ILuaConsole* console = static_cast<ILuaConsole*>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (!console) return 0;
+    LuaConsoleCallbacks* cb = static_cast<LuaConsoleCallbacks*>(lua_touserdata(L, lua_upvalueindex(1)));
+    if (!cb || !cb->setColorRaw) return 0;
     
     luaL_argcheck(L, lua_gettop(L) >= 1, 1, "setColorRaw requires 1 argument (color code)");
     int color = (int)luaL_checkinteger(L, 1);
@@ -58,15 +57,15 @@ static int lua_console_setcolorraw(lua_State* L) {
         return luaL_error(L, "Color must be in range 0-255");
     }
     
-    console->setColorRaw((uint8_t)color);
+    cb->setColorRaw(cb->userData, (uint8_t)color);
     return 0;
 }
 
 static int lua_console_setcolordefault(lua_State* L) {
-    ILuaConsole* console = static_cast<ILuaConsole*>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (!console) return 0;
+    LuaConsoleCallbacks* cb = static_cast<LuaConsoleCallbacks*>(lua_touserdata(L, lua_upvalueindex(1)));
+    if (!cb || !cb->useDefaultColor) return 0;
     
-    console->useDefaultColor();
+    cb->useDefaultColor(cb->userData);
     return 0;
 }
 
@@ -82,7 +81,7 @@ static const struct luaL_Reg console_methods[] = {
 // LuaRunner implementation
 // ============================================================
 
-LuaRunner::LuaRunner() : L(nullptr), _console(nullptr), _finished(false), _currentPath(nullptr) {
+LuaRunner::LuaRunner() : L(nullptr), _callbacks(nullptr), _finished(false), _currentPath(nullptr) {
 }
 
 LuaRunner::~LuaRunner() {
@@ -92,8 +91,8 @@ LuaRunner::~LuaRunner() {
     }
 }
 
-bool LuaRunner::init(ILuaConsole* console) {
-    _console = console;
+bool LuaRunner::init(LuaConsoleCallbacks* callbacks) {
+    _callbacks = callbacks;
     _finished = false;
     
     L = luaL_newstate();
@@ -113,7 +112,7 @@ bool LuaRunner::init(ILuaConsole* console) {
 void LuaRunner::registerBindings() {
     // Создаём таблицу console
     lua_newtable(L);
-    lua_pushlightuserdata(L, _console);
+    lua_pushlightuserdata(L, _callbacks);
     luaL_setfuncs(L, console_methods, 1);
     lua_setglobal(L, "console");
 }
@@ -126,9 +125,9 @@ bool LuaRunner::loadFromBuffer(const char* code, size_t len) {
     // Выполняем код напрямую из буфера
     if (luaL_loadbuffer(L, code, len, "editor_buffer") != LUA_OK) {
         const char* err = lua_tostring(L, -1);
-        if (err && _console) {
-            _console->print(err);
-            _console->printLn();
+        if (err && _callbacks && _callbacks->print) {
+            _callbacks->print(_callbacks->userData, err);
+            _callbacks->printLn(_callbacks->userData);
         }
         lua_pop(L, 1);
         return false;
@@ -137,9 +136,9 @@ bool LuaRunner::loadFromBuffer(const char* code, size_t len) {
     // Выполняем загрузку (инициализация)
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         const char* err = lua_tostring(L, -1);
-        if (err && _console) {
-            _console->print(err);
-            _console->printLn();
+        if (err && _callbacks && _callbacks->print) {
+            _callbacks->print(_callbacks->userData, err);
+            _callbacks->printLn(_callbacks->userData);
         }
         lua_pop(L, 1);
         return false;
@@ -174,10 +173,10 @@ bool LuaRunner::loadFromFile(const char* path) {
     }
 
     if (!SDCARD::open(path)) {
-        if (_console) {
-            _console->print("File not found: ");
-            _console->print(path);
-            _console->printLn();
+        if (_callbacks && _callbacks->print) {
+            _callbacks->print(_callbacks->userData, "File not found: ");
+            _callbacks->print(_callbacks->userData, path);
+            _callbacks->printLn(_callbacks->userData);
         }
         return false;
     }
@@ -186,9 +185,9 @@ bool LuaRunner::loadFromFile(const char* path) {
     
     if (lua_load(L, luaSDReader, this, path, nullptr) != LUA_OK) {
         const char* err = lua_tostring(L, -1);
-        if (err && _console) {
-            _console->print(err);
-            _console->printLn();
+        if (err && _callbacks && _callbacks->print) {
+            _callbacks->print(_callbacks->userData, err);
+            _callbacks->printLn(_callbacks->userData);
         }
         lua_pop(L, 1);
         SDCARD::close();
@@ -201,9 +200,9 @@ bool LuaRunner::loadFromFile(const char* path) {
     // Выполняем загрузку (инициализация)
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         const char* err = lua_tostring(L, -1);
-        if (err && _console) {
-            _console->print(err);
-            _console->printLn();
+        if (err && _callbacks && _callbacks->print) {
+            _callbacks->print(_callbacks->userData, err);
+            _callbacks->printLn(_callbacks->userData);
         }
         lua_pop(L, 1);
         return false;
@@ -233,8 +232,8 @@ bool LuaRunner::callMain() {
     lua_getglobal(L, "main");
 
     if (!lua_isfunction(L, -1)) {
-        if (_console) {
-            _console->print("No main() found\n");
+        if (_callbacks && _callbacks->print) {
+            _callbacks->print(_callbacks->userData, "No main() found\n");
         }
         lua_pop(L, 1);
         return false;
@@ -242,9 +241,9 @@ bool LuaRunner::callMain() {
 
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         const char* err = lua_tostring(L, -1);
-        if (err && _console) {
-            _console->print(err);
-            _console->printLn();
+        if (err && _callbacks && _callbacks->print) {
+            _callbacks->print(_callbacks->userData, err);
+            _callbacks->printLn(_callbacks->userData);
         }
         lua_pop(L, 1);
         return false;

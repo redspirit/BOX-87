@@ -2,7 +2,6 @@
 #include "../shell.h"
 
 class LuaRunner;
-class ShellConsoleAdapter;
 
 class CmdRun : public IShellCommand {
     public:
@@ -17,6 +16,5 @@ class CmdRun : public IShellCommand {
     private:
         bool _finished;
         LuaRunner* _luaRunner;
-        ShellConsoleAdapter* _adapter;
         Shell* _shell;
 };

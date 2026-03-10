@@ -4,48 +4,40 @@
 #include "sdcard.h"
 
 // ============================================================
-// Адаптер Shell → ILuaConsole
+// Callback функции для Shell
 // ============================================================
 
-class ShellConsoleAdapter : public ILuaConsole {
-public:
-    explicit ShellConsoleAdapter(Shell& shell) : _shell(shell) {}
-    
-    void print(const char* text) override {
-        _shell.console().print(text);
-    }
-    
-    void printLn() override {
-        _shell.console().printLn();
-    }
-    
-    void setColorRaw(uint8_t color) override {
-        _shell.console().setColorRaw(color);
-    }
-    
-    void useDefaultColor() override {
-        _shell.console().useDefaultColor();
-    }
-    
-private:
-    Shell& _shell;
-};
+static void shell_print(void* userData, const char* text) {
+    Shell* shell = static_cast<Shell*>(userData);
+    if (shell) shell->console().print(text);
+}
+
+static void shell_printLn(void* userData) {
+    Shell* shell = static_cast<Shell*>(userData);
+    if (shell) shell->console().printLn();
+}
+
+static void shell_setColorRaw(void* userData, uint8_t color) {
+    Shell* shell = static_cast<Shell*>(userData);
+    if (shell) shell->console().setColorRaw(color);
+}
+
+static void shell_useDefaultColor(void* userData) {
+    Shell* shell = static_cast<Shell*>(userData);
+    if (shell) shell->console().useDefaultColor();
+}
 
 // ============================================================
 // CmdRun implementation
 // ============================================================
 
-CmdRun::CmdRun() : _luaRunner(nullptr), _shell(nullptr), _adapter(nullptr), _finished(false) {
+CmdRun::CmdRun() : _luaRunner(nullptr), _shell(nullptr), _finished(false) {
 }
 
 CmdRun::~CmdRun() {
     if (_luaRunner) {
         delete _luaRunner;
         _luaRunner = nullptr;
-    }
-    if (_adapter) {
-        delete _adapter;
-        _adapter = nullptr;
     }
 }
 
@@ -64,13 +56,19 @@ void CmdRun::start(Shell& shell) {
         return;
     }
 
-    // Создаём адаптер для консоли
-    _adapter = new ShellConsoleAdapter(shell);
+    // Создаём callbacks для Shell
+    LuaConsoleCallbacks callbacks = {
+        &shell,
+        shell_print,
+        shell_printLn,
+        shell_setColorRaw,
+        shell_useDefaultColor
+    };
     
     // Создаём Lua runner
     _luaRunner = new LuaRunner();
     
-    if (!_luaRunner->init(_adapter)) {
+    if (!_luaRunner->init(&callbacks)) {
         con.setColor(COLOR_RED);
         con.printLn("LUA state not created");
         con.useDefaultColor();

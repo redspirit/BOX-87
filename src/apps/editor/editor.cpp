@@ -7,6 +7,27 @@
 #include "sdcard.h"
 #include "LOG.h"
 #include "UTF8.h"
+#include "console.h"
+
+// ============================================================
+// Callback функции для Editor (пока заглушки)
+// ============================================================
+
+static void editor_print(void* userData, const char* text) {
+    // Пока игнорируем - в будущем можно добавить консоль поверх редактора
+}
+
+static void editor_printLn(void* userData) {
+    // Игнорируем
+}
+
+static void editor_setColorRaw(void* userData, uint8_t color) {
+    // Игнорируем
+}
+
+static void editor_useDefaultColor(void* userData) {
+    // Игнорируем
+}
 
 // ============================================================
 // KeyRepeat
@@ -60,9 +81,16 @@ bool KeyRepeat::check(uint16_t key, float dt) {
 Editor::Editor(const char* fullPath) : _tiles(), keyRepeat_(0.5f, 0.05f) {
     strncpy(_path, fullPath, MAX_PATH);
     _path[MAX_PATH - 1] = 0;
+    
+    // Инициализируем NULL указатели
+    _luaRunner = nullptr;
 }
 
 Editor::~Editor() {
+    if (_luaRunner) {
+        delete _luaRunner;
+        _luaRunner = nullptr;
+    }
 }
 
 bool Editor::init() {
@@ -94,6 +122,64 @@ bool Editor::init() {
 }
 
 // ============================================================
+// Запуск/остановка Lua кода
+// ============================================================
+
+void Editor::runLua() {
+    // Проверяем расширение файла
+    const char* ext = strrchr(_path, '.');
+    if (!ext || strcmp(ext, ".lua") != 0) {
+        return;  // Не lua файл
+    }
+    
+    // Создаём callbacks для Editor (пока заглушки)
+    LuaConsoleCallbacks callbacks = {
+        this,
+        editor_print,
+        editor_printLn,
+        editor_setColorRaw,
+        editor_useDefaultColor
+    };
+    
+    // Создаём runner
+    _luaRunner = new LuaRunner();
+    
+    if (!_luaRunner->init(&callbacks)) {
+        delete _luaRunner;
+        _luaRunner = nullptr;
+        return;
+    }
+    
+    // Загружаем код из буфера
+    size_t len = strlen(_buffer);
+    _luaRunner->loadFromBuffer(_buffer, len);
+    
+    // Переключаем состояние
+    _state = EditorState::STATE_RUNNING;
+    
+    // Очищаем экран
+    VGA::clear(0);
+}
+
+void Editor::stopLua() {
+    if (_luaRunner) {
+        _luaRunner->cancel();
+    }
+    
+    // Освобождаем ресурсы
+    if (_luaRunner) {
+        delete _luaRunner;
+        _luaRunner = nullptr;
+    }
+    
+    // Переключаем состояние
+    _state = EditorState::STATE_FINISHED;
+    
+    // Очищаем экран
+    VGA::clear(0);
+}
+
+// ============================================================
 // Разбор строк (без копирования)
 // ============================================================
 
@@ -122,9 +208,49 @@ void Editor::parseLines() {
 
 void Editor::handleInput(float dt) {
 
+    // ===== Обработка состояний =====
+    
+    if (_state == EditorState::STATE_RUNNING) {
+        // Во время выполнения обрабатываем только Ctrl+C
+        bool ctrl = KEYBOARD::isPressed(KEYBOARD::CTRL_LEFT) ||
+                    KEYBOARD::isPressed(KEYBOARD::CTRL_RIGHT);
+        
+        if (ctrl && KEYBOARD::isJustPressed(KEYBOARD::C)) {
+            stopLua();
+            return;
+        }
+        
+        // Тик Lua runner
+        if (_luaRunner) {
+            _luaRunner->tick();
+        }
+        return;
+    }
+    
+    if (_state == EditorState::STATE_FINISHED) {
+        // Ждём любую клавишу для возврата в редактор
+        if (KEYBOARD::isJustPressed(KEYBOARD::ESC) ||
+            KEYBOARD::isJustPressed(KEYBOARD::ENTER) ||
+            KEYBOARD::isJustPressed(KEYBOARD::SPACE)) {
+            
+            // Просто возвращаемся в режим редактирования
+            // Курсор и все состояния уже на своих местах
+            _state = EditorState::STATE_EDIT;
+        }
+        return;
+    }
+    
+    // ===== STATE_EDIT - обычное редактирование =====
+
+    // F5 - запуск Lua кода
+    if (KEYBOARD::isJustPressed(KEYBOARD::F5)) {
+        runLua();
+        return;  // Выход, не обрабатывать остальное
+    }
+
     // ===== Сначала обрабатываем ввод текста =====
     // Это очищает буфер клавиатуры от старых символов
-    
+
     // BACKSPACE - удаление символа слева
     if (keyRepeat_.check(KEYBOARD::BACKSPACE, dt)) {
         deleteCharBack();
@@ -146,7 +272,7 @@ void Editor::handleInput(float dt) {
     // ===== Сохранение (Ctrl+S) - ПЕРЕД обработкой символов =====
     bool ctrl = KEYBOARD::isPressed(KEYBOARD::CTRL_LEFT) ||
                 KEYBOARD::isPressed(KEYBOARD::CTRL_RIGHT);
-    
+
     if (ctrl && KEYBOARD::isJustPressed(KEYBOARD::S)) {
         if (save()) {
             _isModified = false;
@@ -687,21 +813,6 @@ void Editor::renderEditor() {
 }
 
 // ============================================================
-// Update
-// ============================================================
-
-void Editor::update(float dt) {
-    handleInput(dt);
-
-    VGA::clear(0);
-    renderEditor();
-    _tiles.render();
-    VGA::show();
-
-    KEYBOARD::beginFrame();
-}
-
-// ============================================================
 // Вставка/удаление символов
 // ============================================================
 
@@ -1052,6 +1163,38 @@ bool Editor::save() {
     }
     
     return result;
+}
+
+// ============================================================
+// Update
+// ============================================================
+
+void Editor::update(float dt) {
+    handleInput(dt);
+
+    if (_state == EditorState::STATE_EDIT) {
+        // Обычный режим - рендерим редактор
+        VGA::clear(0);
+        renderEditor();
+        _tiles.render();
+        VGA::show();
+    } else if (_state == EditorState::STATE_RUNNING) {
+        // Режим выполнения - чёрный экран
+        VGA::clear(0);
+        VGA::show();
+    } else if (_state == EditorState::STATE_FINISHED) {
+        // Программа завершена - показываем сообщение
+        VGA::clear(0);
+        
+        // Рисуем текст по центру
+        _tiles.clear();
+        _tiles.print("[Program finished]", 1, 1, getColorByPalette(COLOR_GREEN));
+        _tiles.print("Press any key...", 1, 3, getColorByPalette(COLOR_GRAY));
+        _tiles.render();
+        VGA::show();
+    }
+
+    KEYBOARD::beginFrame();
 }
 
 void Editor::tick() {

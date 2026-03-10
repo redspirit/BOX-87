@@ -3,9 +3,17 @@
 #include "ISubsystem.h"
 #include "TextTiles.h"
 #include "syntax_profiles.h"
+#include "LuaRunner.h"
 
 #define MAX_PATH 32
 #define MAX_SYNTAX_RULES 64  // Максимум правил для активной строки
+
+// Состояния редактора
+enum class EditorState {
+    STATE_EDIT,       // Обычное редактирование
+    STATE_RUNNING,    // Код выполняется
+    STATE_FINISHED    // Код завершён (ждём возврата)
+};
 
 // Класс для обработки автоповтора клавиш
 class KeyRepeat {
@@ -45,6 +53,10 @@ private:
     void renderEditor();
     bool save();
     
+    // Запуск/остановка Lua кода
+    void runLua();
+    void stopLua();
+    
     // Вставка/удаление символов
     void insertChar(uint16_t ch);
     void insertNewline();
@@ -82,4 +94,8 @@ private:
     bool _isModified = false;  // флаг несохранённых изменений
     
     const LanguageProfile* _syntaxProfile = nullptr;  // текущий профиль подсветки
+    
+    // Для запуска Lua кода
+    EditorState _state = EditorState::STATE_EDIT;
+    LuaRunner* _luaRunner = nullptr;
 };
