@@ -1,5 +1,13 @@
 #include "AppManager.h"
 #include <esp32-hal.h>
+#include "keyboard.h"
+#include "screenshot.h"
+
+void AppManager::handleGlobalHotkeys() {
+    if (KEYBOARD::isJustPressed(KEYBOARD::PRINT_SCREEN)) {
+        Screenshot::capture();
+    }
+}
 
 void AppManager::setDefault(AppFactory factory) {
     _defaultFactory = factory;
@@ -41,6 +49,9 @@ void AppManager::unloadCurrent() {
 
 void AppManager::tick() {
     if (!_current) return;
+
+    // Обработка глобальных горячих клавиш (до обновления приложения)
+    handleGlobalHotkeys();
 
     if (_current) {
         _current->tick();

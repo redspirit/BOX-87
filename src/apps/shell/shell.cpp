@@ -4,7 +4,6 @@
 #include "shell_commands.h"
 #include <string.h>
 #include <stdio.h>
-#include "BMPScreen.h"
 #include "sdcard.h"
 #include <LittleFS.h>
 #include <PNGReader.h>
@@ -201,9 +200,6 @@ void Shell::update(float dt) {
 
     _console.show();
 
-    if (KEYBOARD::isJustPressed(KEYBOARD::PRINT_SCREEN))
-        onPrintScreen();
-
     VGA::show();
     KEYBOARD::beginFrame();
 }
@@ -388,25 +384,6 @@ void Shell::onKeyDown() {
 
     int idx = (_historyHead - 1 - _historyPos + HISTORY_SIZE) % HISTORY_SIZE;
     loadHistoryLine(_history[idx]);
-}
-
-void Shell::onPrintScreen() {
-    uint32_t seconds = millis() / 1000;
-
-    char filename[32];
-    snprintf(filename, sizeof(filename), "/screen_%08lu.bmp", (unsigned long)seconds);
-
-    if(!SDCARD::open(filename, "w")) {
-        _console.printLn("File not opened for writing"); 
-        return;
-    }
-
-    File* f = SDCARD::getFile();
-
-    BMPScreen::makeScreenShot(*f);
-    SDCARD::close();
-    _console.print("Screenshot: ");
-    _console.printLn(filename);
 }
 
 void Shell::resolvePath(const char* input, char* out) {

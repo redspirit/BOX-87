@@ -14,13 +14,14 @@ public:
     void tick();
 
 private:
+    void handleGlobalHotkeys();
     void unloadCurrent();
     void performSwitch();
 
     ISubsystem* _current = nullptr;
     ISubsystem* _next    = nullptr;
     AppFactory  _defaultFactory = nullptr;
-    
+
     uint32_t _lastFrameMs = 0;
     bool _exitRequested  = false;
 };

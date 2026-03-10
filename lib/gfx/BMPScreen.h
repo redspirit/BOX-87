@@ -1,17 +1,18 @@
 #pragma once
 #include <stdint.h>
+#include <FS.h>
 #include <VGA/VGA.h>
 
 namespace BMPScreen
 {
     // Внутренний helper — запись little endian
-    static inline void write16(File& f, uint16_t v)
+    inline void write16(File& f, uint16_t v)
     {
         f.write((uint8_t)(v & 0xFF));
         f.write((uint8_t)((v >> 8) & 0xFF));
     }
 
-    static inline void write32(File& f, uint32_t v)
+    inline void write32(File& f, uint32_t v)
     {
         f.write((uint8_t)(v & 0xFF));
         f.write((uint8_t)((v >> 8) & 0xFF));
@@ -20,7 +21,7 @@ namespace BMPScreen
     }
 
     // Генерация RGB332 палитры
-    static void writeRGB332Palette(File& f)
+    inline void writeRGB332Palette(File& f)
     {
         for (int i = 0; i < 256; i++)
         {
@@ -43,7 +44,7 @@ namespace BMPScreen
     }
 
     // === Основная функция ===
-    static void makeScreenShot(File& file)
+    inline void makeScreenShot(File& file)
     {
         const int width  = VGA::width();
         const int height = VGA::height();

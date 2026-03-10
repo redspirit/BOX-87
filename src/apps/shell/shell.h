@@ -3,7 +3,6 @@
 #include "keyboard.h"
 #include "console.h"
 #include "VGA/VGA.h"
-#include "sdcard.h"
 #include "CmdParser.h"
 #include "IShellCommand.h"
 
@@ -81,7 +80,6 @@ class Shell : public ISubsystem {
         void onKeyRight();
         void onKeyUp();
         void onKeyDown();
-        void onPrintScreen();
         bool loadLogo(uint8_t*& img, int& w, int& h);
 
         /* ==== HISTORY ==== */
