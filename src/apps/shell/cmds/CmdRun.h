@@ -1,33 +1,30 @@
 #include "../IShellCommand.h"
 #include "../shell.h"
-
-extern "C" {
-    #include "lua.h"
-    #include "lauxlib.h"
-    #include "lualib.h"
-}
+#include "LuaRunner.h"
 
 class CmdRun : public IShellCommand {
-    public:
-        CmdRun();
-        ~CmdRun();    
-        void start(Shell& shell) override;
-        void tick(Shell& shell) override;
-        void cancel(Shell& shell) override;
-        bool isFinished() const override;
-        void onChar(Shell& shell, uint16_t c);
+public:
 
-    private:
-        bool _finished = false;
-        lua_State* L;
-        Shell* _shell;
+    CmdRun();
+    ~CmdRun();
 
-        static const size_t LUA_READ_BUFFER = 512;
-        uint8_t _luaBuffer[LUA_READ_BUFFER];
-        static const char* luaSDReader(lua_State* L, void* data, size_t* size);
-        
-        void pushArguments();
-        bool runFile(const char* path);
-        void registerBindings();
-        bool callMain();
+    void start(Shell& shell) override;
+    void tick(Shell& shell) override;
+    void cancel(Shell& shell) override;
+    bool isFinished() const override;
+    void onChar(Shell& shell, uint16_t c);
+
+private:
+
+    bool _finished;
+    Shell* _shell;
+
+    LuaRunner _runner;
+
+    static size_t sdReader(uint8_t* buffer, size_t max, void* user);
+
+    static void cbStdout(const char* text, void* user);
+    static void cbError(const char* text, void* user);
+
+    char _path[MAX_PATH];
 };
