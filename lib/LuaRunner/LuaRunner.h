@@ -1,71 +1,51 @@
 #pragma once
+
+#include <stddef.h>
 #include <stdint.h>
+
 extern "C" {
-    #include "lua.h"
-    #include "lauxlib.h"
-    #include "lualib.h"
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
 }
 
-// Типы функций для консольного вывода (function pointers)
-typedef void (*LuaPrintFunc)(void* userData, const char* text);
-typedef void (*LuaPrintLnFunc)(void* userData);
-typedef void (*LuaSetColorFunc)(void* userData, uint8_t color);
-typedef void (*LuaUseDefaultColorFunc)(void* userData);
-
-// Структура с callbacks для консоли
-struct LuaConsoleCallbacks {
-    void* userData;
-    LuaPrintFunc print;
-    LuaPrintLnFunc printLn;
-    LuaSetColorFunc setColorRaw;
-    LuaUseDefaultColorFunc useDefaultColor;
-};
-
-// Класс для запуска Lua кода
 class LuaRunner {
 public:
+
+    typedef size_t (*ReadCallback)(uint8_t* buffer, size_t maxSize, void* userData);
+    typedef void (*StdoutCallback)(const char* text, void* userData);
+    typedef void (*ErrorCallback)(const char* text, void* userData);
+
     LuaRunner();
     ~LuaRunner();
 
-    // Инициализация Lua state
-    bool init(LuaConsoleCallbacks* callbacks);
+    bool init();
 
-    // Загрузка и выполнение Lua кода из буфера (память)
-    bool loadFromBuffer(const char* code, size_t len);
-
-    // Загрузка и выполнение Lua кода из файла (SD-карта)
-    bool loadFromFile(const char* path);
-
-    // Установка аргументов командной строки (arg table)
-    void setArguments(int argc, const char** argv);
-
-    // Вызов функции main() из Lua кода
-    bool callMain();
-
-    // Тик (для длительных операций, пока пусто)
-    void tick();
-
-    // Отмена выполнения
-    void cancel();
-
-    // Проверка завершения
-    bool isFinished() const;
-
-    // Получение Lua state (для расширенных операций)
-    lua_State* getState() { return L; }
+    bool run(ReadCallback reader,
+             void* readerUserData,
+             StdoutCallback stdoutCb,
+             ErrorCallback errCb,
+             void* callbackUserData);
 
 private:
+
     lua_State* L;
-    LuaConsoleCallbacks* _callbacks;
-    bool _finished;
 
-    // Регистрация binding'ов (console.print и т.д.)
+    static const size_t LUA_READ_BUFFER = 512;
+    uint8_t _buffer[LUA_READ_BUFFER];
+
+    ReadCallback _reader;
+    void* _readerUser;
+
+    StdoutCallback _stdout;
+    ErrorCallback _err;
+
+    void* _cbUser;
+
+    static const char* luaReader(lua_State* L, void* data, size_t* size);
+
+    static int lua_print(lua_State* L);
+    static int lua_println(lua_State* L);
+
     void registerBindings();
-
-    // Lua reader для загрузки из SD-карты
-    static const char* luaSDReader(lua_State* L, void* data, size_t* size);
-
-    // Временный буфер для чтения из SD
-    char _luaBuffer[512];
-    const char* _currentPath;
 };

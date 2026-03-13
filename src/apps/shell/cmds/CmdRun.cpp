@@ -1,54 +1,49 @@
-#include "CmdRun.h"
-#include "LuaRunner.h"
+ #include "CmdRun.h"
 #include "palette.h"
 #include "sdcard.h"
 
-// ============================================================
-// Callback функции для Shell
-// ============================================================
-
-static void shell_print(void* userData, const char* text) {
-    Shell* shell = static_cast<Shell*>(userData);
-    if (shell) shell->console().print(text);
-}
-
-static void shell_printLn(void* userData) {
-    Shell* shell = static_cast<Shell*>(userData);
-    if (shell) shell->console().printLn();
-}
-
-static void shell_setColorRaw(void* userData, uint8_t color) {
-    Shell* shell = static_cast<Shell*>(userData);
-    if (shell) shell->console().setColorRaw(color);
-}
-
-static void shell_useDefaultColor(void* userData) {
-    Shell* shell = static_cast<Shell*>(userData);
-    if (shell) shell->console().useDefaultColor();
-}
-
-// ============================================================
-// CmdRun implementation
-// ============================================================
-
-CmdRun::CmdRun() : _luaRunner(nullptr), _shell(nullptr), _finished(false) {
+CmdRun::CmdRun() :
+    _finished(false),
+    _shell(nullptr)
+{
 }
 
 CmdRun::~CmdRun() {
-    if (_luaRunner) {
-        delete _luaRunner;
-        _luaRunner = nullptr;
-    }
+}
+
+size_t CmdRun::sdReader(uint8_t* buffer, size_t max, void* user) {
+
+    CmdRun* self = (CmdRun*)user;
+    (void)self;
+
+    return SDCARD::read(buffer, max);
+}
+
+void CmdRun::cbStdout(const char* text, void* user) {
+
+    CmdRun* self = (CmdRun*)user;
+    self->_shell->console().print(text);
+}
+
+void CmdRun::cbError(const char* text, void* user) {
+
+    CmdRun* self = (CmdRun*)user;
+
+    auto& con = self->_shell->console();
+
+    con.setColor(COLOR_RED);
+    con.printLn(text);
+    con.useDefaultColor();
 }
 
 void CmdRun::start(Shell& shell) {
+
     _shell = &shell;
     auto& con = shell.console();
     auto& cmd = shell.parsedCmd();
 
-    const char* path = cmd.argv(1);
-
     if (cmd.argc() < 2) {
+
         con.setColor(COLOR_RED);
         con.printLn("Usage: RUN <file>");
         con.useDefaultColor();
@@ -56,58 +51,47 @@ void CmdRun::start(Shell& shell) {
         return;
     }
 
-    // Создаём callbacks для Shell
-    LuaConsoleCallbacks callbacks = {
-        &shell,
-        shell_print,
-        shell_printLn,
-        shell_setColorRaw,
-        shell_useDefaultColor
-    };
-    
-    // Создаём Lua runner
-    _luaRunner = new LuaRunner();
-    
-    if (!_luaRunner->init(&callbacks)) {
+    shell.resolvePath(cmd.argv(1), _path);
+
+    if (!SDCARD::open(_path)) {
+
         con.setColor(COLOR_RED);
-        con.printLn("LUA state not created");
+        con.printLn("File not found");
         con.useDefaultColor();
         _finished = true;
         return;
     }
 
-    // Устанавливаем аргументы командной строки
-    int argc = cmd.argc();
-    const char** argv = new const char*[argc];
-    for (int i = 0; i < argc; i++) {
-        argv[i] = cmd.argv(i);
-    }
-    _luaRunner->setArguments(argc, argv);
-    delete[] argv;
+    if (!_runner.init()) {
 
-    // Загружаем и выполняем файл
-    char pathOut[MAX_PATH];
-    _shell->resolvePath(path, pathOut);
-    
-    if (!_luaRunner->loadFromFile(pathOut)) {
         con.setColor(COLOR_RED);
-        con.printLn("LUA file not loaded");
+        con.printLn("Lua init failed");
         con.useDefaultColor();
         _finished = true;
+        return;
     }
+
+    if (!_runner.run(sdReader,
+                     this,
+                     cbStdout,
+                     cbError,
+                     this))
+    {
+        _finished = true;
+        SDCARD::close();
+        return;
+    }
+
+    con.printLn();
+    SDCARD::close();
+    _finished = true;
 }
 
 void CmdRun::tick(Shell& shell) {
-    if (_finished || !_luaRunner)
-        return;
-
-    _luaRunner->tick();
 }
 
 void CmdRun::cancel(Shell& shell) {
-    if (_luaRunner) {
-        _luaRunner->cancel();
-    }
+
     _shell->console().useDefaultColor();
     _finished = true;
 }
@@ -117,5 +101,4 @@ bool CmdRun::isFinished() const {
 }
 
 void CmdRun::onChar(Shell& shell, uint16_t c) {
-    // Пока ничего не нужно
 }

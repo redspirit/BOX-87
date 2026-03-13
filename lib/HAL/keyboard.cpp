@@ -325,6 +325,11 @@ namespace KEYBOARD {
         memcpy(prevKeyBits_, keyBits_, sizeof(keyBits_));
     }
 
+    void flush() {
+        uint16_t ch;
+        while (getChar(true, ch)) {}
+    }
+
     bool readKey(KeyEvent& ev) {
         if (eventHead_ == eventTail_)
             return false;
