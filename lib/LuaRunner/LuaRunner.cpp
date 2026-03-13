@@ -16,19 +16,18 @@ LuaRunner::~LuaRunner() {
 }
 
 bool LuaRunner::init() {
-
     L = luaL_newstate();
     if (!L)
         return false;
 
     luaL_openlibs(L);
-    registerBindings();
-
+    
+    // Не регистрируем binding'и здесь - они будут зарегистрированы в run()
+    
     return true;
 }
 
 void LuaRunner::registerBindings() {
-
     lua_pushlightuserdata(L, this);
     lua_pushcclosure(L, lua_print, 1);
     lua_setglobal(L, "print");
@@ -39,7 +38,6 @@ void LuaRunner::registerBindings() {
 }
 
 int LuaRunner::lua_print(lua_State* L) {
-
     LuaRunner* self =
         static_cast<LuaRunner*>(lua_touserdata(L, lua_upvalueindex(1)));
 
@@ -49,7 +47,6 @@ int LuaRunner::lua_print(lua_State* L) {
     int nargs = lua_gettop(L);
 
     for (int i = 1; i <= nargs; ++i) {
-
         const char* str = luaL_tolstring(L, i, nullptr);
 
         if (str)
@@ -65,7 +62,6 @@ int LuaRunner::lua_print(lua_State* L) {
 }
 
 int LuaRunner::lua_println(lua_State* L) {
-
     LuaRunner* self =
         static_cast<LuaRunner*>(lua_touserdata(L, lua_upvalueindex(1)));
 
@@ -122,6 +118,9 @@ bool LuaRunner::run(ReadCallback reader,
     _err = errCb;
 
     _cbUser = callbackUserData;
+    
+    // Регистрируем binding'и после установки callbacks
+    registerBindings();
 
     if (lua_load(L, luaReader, this, "chunk", nullptr) != LUA_OK) {
 

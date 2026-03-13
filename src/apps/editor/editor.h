@@ -3,9 +3,17 @@
 #include "ISubsystem.h"
 #include "TextTiles.h"
 #include "syntax_profiles.h"
+#include "LuaRunner.h"
 
 #define MAX_PATH 32
-#define MAX_SYNTAX_RULES 64  // Максимум правил для активной строки
+#define MAX_SYNTAX_RULES 64
+
+// Состояния редактора
+enum class EditorState {
+    STATE_EDIT,       // Обычное редактирование
+    STATE_RUNNING,    // Код выполняется
+    STATE_FINISHED    // Код завершён (ждём возврата)
+};
 
 // Класс для обработки автоповтора клавиш
 class KeyRepeat {
@@ -13,14 +21,14 @@ public:
     // initialDelay - задержка перед первым повтором (сек)
     // repeatDelay - задержка между повторами (сек)
     KeyRepeat(float initialDelay = 0.5f, float repeatDelay = 0.05f);
-    
+
     // Сброс состояния
     void reset();
-    
+
     // Проверка клавиши с автоповтором
     // Возвращает true при первом нажатии и при автоповторе
     bool check(uint16_t key, float dt);
-    
+
 private:
     uint16_t lastKey_ = 0;
     float holdTime_ = 0.0f;
@@ -37,6 +45,12 @@ public:
     bool init() override;
     void update(float dt) override;
     void tick() override;
+    
+    // Публичный доступ для callback функций
+    TextTiles& tiles() { return _tiles; }
+    uint16_t& luaPrintY() { return _luaPrintY; }
+    uint16_t& luaPrintX() { return _luaPrintX; }    
+    char* buffer() { return _buffer; }
 
 private:
     void parseLines();
@@ -45,6 +59,10 @@ private:
     void renderEditor();
     bool save();
     
+    // Запуск/остановка Lua кода
+    void runLua();
+    void stopLua();
+
     // Вставка/удаление символов
     void insertChar(uint16_t ch);
     void insertNewline();
@@ -55,7 +73,7 @@ private:
 
 private:
     uint32_t _frameTimeMs = 16;
-    
+
     // ===== Константы =====
     static constexpr size_t MAX_FILE_SIZE = 100 * 1024; // 100KB
     static constexpr size_t MAX_LINES     = 4096;
@@ -76,10 +94,18 @@ private:
 
     uint16_t _scrollX = 0;
     uint16_t _scrollY = 0;
-    
+
     KeyRepeat keyRepeat_;
     bool _isEngLayout = true;  // по умолчанию английская раскладка
     bool _isModified = false;  // флаг несохранённых изменений
-    
+
     const LanguageProfile* _syntaxProfile = nullptr;  // текущий профиль подсветки
+    
+    // Для запуска Lua кода
+    EditorState _state = EditorState::STATE_EDIT;
+    LuaRunner* _luaRunner = nullptr;
+    
+    // Позиция вывода для Lua print()
+    uint16_t _luaPrintY = 0;
+    uint16_t _luaPrintX = 0;
 };

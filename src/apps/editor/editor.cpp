@@ -5,8 +5,151 @@
 #include "palette.h"
 #include "VGA/VGA.h"
 #include "sdcard.h"
-#include "LOG.h"
 #include "UTF8.h"
+
+// ============================================================
+// Callback функции для Lua (stdout/stderr)
+// ============================================================
+
+static void scrollLuaOutput(Editor* editor)
+{
+    TextTiles& tiles = editor->tiles();
+
+    int width  = tiles.gridWidth();
+    int height = tiles.gridHeight();
+
+    // Сдвигаем все строки вверх
+    for (int y = 1; y < height - 1; y++)
+    {
+        for (int x = 1; x < width - 1; x++)
+        {
+            auto t = tiles.getTile(x, y + 1);
+            tiles.drawTile(x, y, t);
+        }
+    }
+
+    // Очищаем последнюю строку
+    for (int x = 1; x < width - 1; x++)
+    {
+        tiles.drawTile(x, height - 2, { ' ', 0, 0, false, false });
+    }
+
+    editor->luaPrintY() = height - 2;
+}
+
+static void printLuaStream(Editor* editor, const char* text, uint8_t color)
+{
+    if (!editor || !text) return;
+
+    TextTiles& tiles = editor->tiles();
+
+    uint16_t& x = editor->luaPrintX();
+    uint16_t& y = editor->luaPrintY();
+
+    int width  = tiles.gridWidth();
+    int height = tiles.gridHeight();
+
+    if (x == 1 && y == 1)
+    {
+        VGA::clear(0);
+        tiles.clear();
+    }
+
+    const char* p = text;
+
+    while (*p)
+    {
+        char c = *p++;
+
+        if (c == '\r')
+            continue;
+
+        if (c == '\n')
+        {
+            x = 1;
+            y++;
+
+            if (y >= height - 1)
+                scrollLuaOutput(editor);
+
+            continue;
+        }
+
+        tiles.drawTile(x, y, {
+            (uint16_t)c,
+            color,
+            0,
+            false,
+            false
+        });
+
+        x++;
+
+        if (x >= width - 1)
+        {
+            x = 1;
+            y++;
+
+            if (y >= height - 1)
+                scrollLuaOutput(editor);
+        }
+    }
+
+    tiles.render();
+    VGA::show();
+
+    yield();
+}
+
+static void lua_stdout_callback(const char* text, void* userData)
+{
+    Editor* editor = static_cast<Editor*>(userData);
+
+    printLuaStream(
+        editor,
+        text,
+        getColorByPalette(COLOR_WHITE)
+    );
+}
+
+static void lua_stderr_callback(const char* text, void* userData)
+{
+    Editor* editor = static_cast<Editor*>(userData);
+
+    printLuaStream(
+        editor,
+        text,
+        getColorByPalette(COLOR_RED)
+    );
+}
+
+// Reader callback для загрузки из памяти
+static size_t lua_memory_reader(uint8_t* buffer, size_t maxSize, void* userData) {
+    Editor* editor = static_cast<Editor*>(userData);
+    if (!editor) return 0;
+
+    static size_t pos = 0;
+
+    const char* src = editor->buffer();
+    size_t total = strlen(src);
+
+    if (pos >= total)
+    {
+        pos = 0;
+        return 0;
+    }
+
+    size_t remaining = total - pos;
+    size_t toRead = remaining;
+
+    if (toRead > maxSize)
+        toRead = maxSize;
+
+    memcpy(buffer, src + pos, toRead);
+    pos += toRead;
+
+    return toRead;
+}
 
 // ============================================================
 // KeyRepeat
@@ -60,6 +203,11 @@ bool KeyRepeat::check(uint16_t key, float dt) {
 Editor::Editor(const char* fullPath) : _tiles(), keyRepeat_(0.5f, 0.05f) {
     strncpy(_path, fullPath, MAX_PATH);
     _path[MAX_PATH - 1] = 0;
+    
+    // Инициализируем NULL указатели и переменные
+    _luaRunner = nullptr;
+    _luaPrintY = 1;
+    _state = EditorState::STATE_EDIT;
 }
 
 Editor::~Editor() {
@@ -86,11 +234,99 @@ bool Editor::init() {
     }
 
     parseLines();
-    
+
     // Инициализируем профиль подсветки синтаксиса
     _syntaxProfile = getProfileForFile(_path);
 
     return true;
+}
+
+// ============================================================
+// Запуск/остановка Lua кода
+// ============================================================
+
+void Editor::runLua() {
+    // Проверяем расширение файла
+    const char* ext = strrchr(_path, '.');
+    if (!ext || strcmp(ext, ".lua") != 0) {
+        return;  // Не lua файл
+    }
+    
+    // Очищаем предыдущий runner если есть
+    if (_luaRunner) {
+        delete _luaRunner;
+        _luaRunner = nullptr;
+    }
+    
+    // Сбрасываем позицию печати
+    _luaPrintY = 1;
+    _luaPrintX = 1;
+    
+    // Создаём runner
+    _luaRunner = new LuaRunner();
+    if (!_luaRunner) {
+        return;  // Не удалось выделить память
+    }
+    
+    // Инициализируем Lua state
+    if (!_luaRunner->init()) {
+        delete _luaRunner;
+        _luaRunner = nullptr;
+        return;
+    }
+    
+    // Переключаем состояние ПЕРЕД запуском
+    _state = EditorState::STATE_RUNNING;
+    
+    // Сбрасываем позицию печати
+    _luaPrintY = 1;
+    
+    // Очищаем экран ЧЁРНЫМ
+    VGA::clear(0);
+    _tiles.clear();
+    VGA::show();
+    
+    // Запускаем код из буфера (выполняется синхронно)
+    bool result = _luaRunner->run(lua_memory_reader, this, lua_stdout_callback, lua_stderr_callback, this);
+    
+    if (!result) {
+        // Ошибка загрузки
+        delete _luaRunner;
+        _luaRunner = nullptr;
+        _state = EditorState::STATE_EDIT;
+        return;
+    }
+    
+    printLuaStream(
+        this,
+        "\n[Program finished]\n",
+        getColorByPalette(COLOR_GREEN)
+    );
+    printLuaStream(
+        this,
+        "Press any key...\n",
+        getColorByPalette(COLOR_GRAY)
+    );
+    
+    // Теперь переходим в FINISHED и ждём любую клавишу
+    _state = EditorState::STATE_FINISHED;
+}
+
+void Editor::stopLua() {
+    // Освобождаем ресурсы
+    if (_luaRunner) {
+        delete _luaRunner;
+        _luaRunner = nullptr;
+    }
+    
+    // Сбрасываем позицию печати
+    _luaPrintY = 1;
+    
+    // Переключаем состояние
+    _state = EditorState::STATE_FINISHED;
+    
+    // Очищаем экран
+    VGA::clear(0);
 }
 
 // ============================================================
@@ -122,9 +358,40 @@ void Editor::parseLines() {
 
 void Editor::handleInput(float dt) {
 
+    // ===== Обработка состояний =====
+    
+    if (_state == EditorState::STATE_FINISHED) {
+        // Ждём ЛЮБУЮ клавишу для возврата в редактор
+        // Проверяем все популярные клавиши
+        bool anyKey = 
+            KEYBOARD::isJustPressed(KEYBOARD::ESC) ||
+            KEYBOARD::isJustPressed(KEYBOARD::ENTER) ||
+            KEYBOARD::isJustPressed(KEYBOARD::SPACE) ||
+            KEYBOARD::isJustPressed(KEYBOARD::UP) ||
+            KEYBOARD::isJustPressed(KEYBOARD::DOWN) ||
+            KEYBOARD::isJustPressed(KEYBOARD::LEFT) ||
+            KEYBOARD::isJustPressed(KEYBOARD::RIGHT);
+        
+        if (anyKey) {
+            KEYBOARD::flush();
+            keyRepeat_.reset();
+            // Возвращаемся в режим редактирования
+            _state = EditorState::STATE_EDIT;
+        }
+        return;
+    }
+    
+    // ===== STATE_EDIT - обычное редактирование =====
+
+    // F5 - запуск Lua кода
+    if (KEYBOARD::isJustPressed(KEYBOARD::F5)) {
+        runLua();
+        return;  // Выход, не обрабатывать остальное
+    }
+
     // ===== Сначала обрабатываем ввод текста =====
     // Это очищает буфер клавиатуры от старых символов
-    
+
     // BACKSPACE - удаление символа слева
     if (keyRepeat_.check(KEYBOARD::BACKSPACE, dt)) {
         deleteCharBack();
@@ -146,14 +413,13 @@ void Editor::handleInput(float dt) {
     // ===== Сохранение (Ctrl+S) - ПЕРЕД обработкой символов =====
     bool ctrl = KEYBOARD::isPressed(KEYBOARD::CTRL_LEFT) ||
                 KEYBOARD::isPressed(KEYBOARD::CTRL_RIGHT);
-    
+
     if (ctrl && KEYBOARD::isJustPressed(KEYBOARD::S)) {
         if (save()) {
             _isModified = false;
         }
         // Очищаем буфер клавиатуры от 's', чтобы не печаталась
-        uint16_t dummy;
-        while (KEYBOARD::getChar(_isEngLayout, dummy)) {}
+        KEYBOARD::flush();
         return;  // Выходим, не обрабатываем остальные клавиши в этом кадре
     }
     
@@ -162,8 +428,7 @@ void Editor::handleInput(float dt) {
         deleteCurrentLine();
         _isModified = true;
         // Очищаем буфер от 'r'
-        uint16_t dummy;
-        while (KEYBOARD::getChar(_isEngLayout, dummy)) {}
+        KEYBOARD::flush();
         return;
     }
     
@@ -172,8 +437,7 @@ void Editor::handleInput(float dt) {
         duplicateCurrentLine();
         _isModified = true;
         // Очищаем буфер от 'd'
-        uint16_t dummy;
-        while (KEYBOARD::getChar(_isEngLayout, dummy)) {}
+        KEYBOARD::flush();
         return;
     }
 
@@ -687,21 +951,6 @@ void Editor::renderEditor() {
 }
 
 // ============================================================
-// Update
-// ============================================================
-
-void Editor::update(float dt) {
-    handleInput(dt);
-
-    VGA::clear(0);
-    renderEditor();
-    _tiles.render();
-    VGA::show();
-
-    KEYBOARD::beginFrame();
-}
-
-// ============================================================
 // Вставка/удаление символов
 // ============================================================
 
@@ -1044,14 +1293,27 @@ bool Editor::save() {
         SDCARD::close();
     }
     
-    if (result) {
-        LOG.print("File saved: ");
-        LOG.println(_path);
-    } else {
-        LOG.println("Write failed");
-    }
-    
     return result;
+}
+
+// ============================================================
+// Update
+// ============================================================
+
+void Editor::update(float dt) {
+    handleInput(dt);
+
+    if (_state == EditorState::STATE_EDIT) {
+        // Обычный режим - рендерим редактор
+        VGA::clear(0);
+        renderEditor();
+        _tiles.render();
+        VGA::show();
+    }
+    // STATE_RUNNING и STATE_FINISHED не рендерим здесь - 
+    // отрисовка происходит в runLua() и callback'ах
+
+    KEYBOARD::beginFrame();
 }
 
 void Editor::tick() {

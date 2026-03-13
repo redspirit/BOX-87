@@ -88,6 +88,10 @@ void TextTiles::drawTileForeground(int x, int y, CharTile t) {
     fgTile_ = t;
 }
 
+CharTile& TextTiles::getTile(int x, int y) {
+    return tileAt(x, y);
+}
+
 void TextTiles::foregroundVisible(bool visible) {
     fgVisible_ = visible;
 }

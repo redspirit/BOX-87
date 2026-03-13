@@ -64,6 +64,7 @@ namespace KEYBOARD {
     void init();
     void poll();
     void beginFrame();
+    void flush();
 
     bool readKey(KeyEvent& ev);
     bool getChar(bool isEng, uint16_t& out);
